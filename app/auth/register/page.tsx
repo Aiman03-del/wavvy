@@ -7,6 +7,8 @@ import { gsap } from 'gsap'
 import { Music2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wavvy-five.vercel.app'
+
 export default function RegisterPage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -41,6 +43,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
+        emailRedirectTo: `${appUrl}/auth/login`,
         data: { username },
       },
     })
