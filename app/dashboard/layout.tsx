@@ -57,13 +57,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      minHeight: '100vh',
-      background: '#0A0A0F',
-      fontFamily: "'DM Sans', sans-serif",
-      color: '#F1F5F9',
-    }}>
+    <div className="wavvy-dashboard">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -75,13 +69,7 @@ export default function DashboardLayout({
 
       <Sidebar profile={profile} />
 
-      <main style={{
-        flex: 1,
-        marginLeft: '240px',
-        paddingBottom: '100px',
-        minHeight: '100vh',
-        overflow: 'auto',
-      }}>
+      <main className="wavvy-main">
         {children}
       </main>
 

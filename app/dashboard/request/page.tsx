@@ -64,7 +64,7 @@ export default function RequestPage() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '720px' }}>
+    <div className="wavvy-page-form">
       <style>{`
         .req-input { transition: all 0.2s; }
         .req-input:focus { outline: none; border-color: rgba(59,130,246,0.6) !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
@@ -73,9 +73,8 @@ export default function RequestPage() {
       `}</style>
 
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{
-          fontFamily: "'Syne', sans-serif",
-          fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.5px',
+        <h1 className="wavvy-page-title" style={{
+          letterSpacing: '-0.5px',
           display: 'flex', alignItems: 'center', gap: '0.6rem',
         }}><Target size={24} /> Request a Song</h1>
         <p style={{ color: '#94A3B8', marginTop: '0.25rem', fontSize: '0.9rem' }}>
@@ -187,7 +186,8 @@ export default function RequestPage() {
                   border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '1rem',
                   padding: '1rem 1.25rem',
-                  display: 'flex', alignItems: 'center', gap: '1rem',
+                  display: 'flex', alignItems: 'flex-start', gap: '1rem',
+                  flexWrap: 'wrap',
                 }}>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
                     <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>YouTube request</p>

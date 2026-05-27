@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useMusicStore } from '@/store/musicStore'
 import AudioPlayer from '@/components/player/AudioPlayer'
+import FullScreenPlayer from '@/components/ui/player/FullScreenPlayer'
 
 function formatTime(seconds: number) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -43,34 +44,27 @@ export default function MusicPlayer() {
     ;(window as any).wavvySeek?.(seekTo)
   }
 
+  const openFullScreen = () => {
+    const { isFullScreen } = useMusicStore.getState()
+    if (!isFullScreen) toggleFullScreen()
+  }
+
   return (
     <>
       <AudioPlayer />
+      <FullScreenPlayer />
       <div
         ref={barRef}
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: '240px',
-          right: 0,
-          height: '88px',
-          background: 'rgba(17,17,24,0.95)',
-          backdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(255,255,255,0.07)',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 1.5rem',
-          zIndex: 50,
-          gap: '1rem',
-        }}
+        className="wavvy-player"
       >
-        {/* Song Info */}
+        {/* Song Info — tap to expand */}
         <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: '0.85rem',
-            flex: '0 0 260px', minWidth: 0, cursor: 'pointer',
-          }}
-          onClick={toggleFullScreen}
+          className="wavvy-player-info"
+          onClick={openFullScreen}
+          onKeyDown={(e) => e.key === 'Enter' && openFullScreen()}
+          role="button"
+          tabIndex={0}
+          aria-label="Expand player"
         >
           <img
             src={currentSong.thumbnail_url || `https://img.youtube.com/vi/${currentSong.youtube_id}/mqdefault.jpg`}
@@ -94,7 +88,7 @@ export default function MusicPlayer() {
         </div>
 
         {/* Controls */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="wavvy-player-controls">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <button onClick={prevSong} style={btnStyle}>⏮</button>
             <button
@@ -142,10 +136,7 @@ export default function MusicPlayer() {
         </div>
 
         {/* Volume */}
-        <div style={{
-          flex: '0 0 200px', display: 'flex',
-          alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-end',
-        }}>
+        <div className="wavvy-player-volume">
           <span style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
             {volume === 0 ? '🔇' : volume < 50 ? '🔉' : '🔊'}
           </span>

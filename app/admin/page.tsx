@@ -317,25 +317,18 @@ export default function AdminPage() {
       `}</style>
 
       {/* Top Bar */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
-        background: 'rgba(10,10,15,0.95)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '0 2rem',
-        display: 'flex', alignItems: 'center', gap: '1.5rem', height: '60px',
-      }}>
+      <div className="wavvy-admin-topbar">
         <button
           onClick={() => router.push('/dashboard')}
-          style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.1rem' }}
+          style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0 }}
         >←</button>
         <span style={{
           fontFamily: "'Syne', sans-serif",
-          fontSize: '1.3rem', fontWeight: 800, color: '#A78BFA',
+          fontSize: 'clamp(1rem, 3vw, 1.3rem)', fontWeight: 800, color: '#A78BFA',
           display: 'inline-flex', alignItems: 'center', gap: '0.45rem',
         }}><Crown size={18} /> Admin Panel</span>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+        <div className="wavvy-admin-tabs">
           {(['songs', 'requests', 'users'] as Tab[]).map(t => (
             <button
               key={t}
@@ -364,13 +357,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div style={{ padding: '1.75rem 2rem', maxWidth: '1100px', margin: '0 auto' }}>
+      <div className="wavvy-admin-content">
 
         {/* Stats Row */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '0.85rem', marginBottom: '1.75rem',
-        }}>
+        <div className="wavvy-admin-stats">
           {[
             { label: 'Total Songs', value: stats.songs, icon: Music2, color: '#3B82F6' },
             { label: 'Total Users', value: stats.users, icon: Users, color: '#10B981' },
@@ -402,7 +392,7 @@ export default function AdminPage() {
         {/* ── SONGS TAB ─────────────────────────────── */}
         {tab === 'songs' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <h2 style={{ fontWeight: 700, fontSize: '1.05rem' }}>
                 All Songs ({songs.length})
               </h2>
@@ -418,11 +408,12 @@ export default function AdminPage() {
               >+ Add Song</button>
             </div>
 
-            <div style={{
+            <div className="wavvy-table-scroll" style={{
               background: '#16161F',
               border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '1.25rem', overflow: 'hidden',
+              borderRadius: '1.25rem',
             }}>
+              <div className="wavvy-table-inner">
               {/* Table Header */}
               <div style={{
                 display: 'grid',
@@ -502,6 +493,7 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         )}
@@ -552,6 +544,7 @@ export default function AdminPage() {
                     borderRadius: '1rem',
                     padding: '1rem 1.25rem',
                     display: 'flex', alignItems: 'flex-start', gap: '1rem',
+                    flexWrap: 'wrap',
                     cursor: req.status === 'pending' ? 'pointer' : 'default',
                   }}>
                     <div style={{ flex: 1 }}>
@@ -595,7 +588,7 @@ export default function AdminPage() {
                     </div>
 
                     {req.status === 'pending' && (
-                      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -656,11 +649,12 @@ export default function AdminPage() {
               All Users ({users.length})
             </h2>
 
-            <div style={{
+            <div className="wavvy-table-scroll" style={{
               background: '#16161F',
               border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '1.25rem', overflow: 'hidden',
+              borderRadius: '1.25rem',
             }}>
+              <div className="wavvy-table-inner">
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '44px 1fr 200px 90px 120px 100px',
@@ -738,6 +732,7 @@ export default function AdminPage() {
                   </button>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         )}
@@ -837,7 +832,7 @@ export default function AdminPage() {
               </div>
 
               {/* Genre + Mood */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="wavvy-form-grid-2">
                 <div>
                   <label style={labelStyle}>Genre</label>
                   <select className="admin-input" value={songForm.genre}

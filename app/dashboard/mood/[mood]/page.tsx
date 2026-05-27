@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Frown, Music2, PartyPopper, Smile, Target, Wind } from 'lucide-react'
+import SongGrid from '@/components/ui/SongGrid'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import type { Song } from '@/types'
@@ -75,7 +76,7 @@ export default function MoodPage() {
   const MoodIcon = meta.icon
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px' }}>
+    <div className="wavvy-page">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <span style={{ color: meta.color, display: 'inline-flex' }}>
           <MoodIcon size={26} />
@@ -98,31 +99,7 @@ export default function MoodPage() {
           <p style={{ color: '#94A3B8', marginTop: '1rem' }}>No songs found for this mood yet.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-          {songs.map((song) => (
-            <button
-              key={song.id}
-              onClick={() => handlePlay(song)}
-              style={{
-                background: '#16161F',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: '1.25rem',
-                padding: '1rem',
-                color: '#F1F5F9',
-                textAlign: 'left',
-                cursor: 'pointer',
-              }}
-            >
-              <img
-                src={song.thumbnail_url || `https://img.youtube.com/vi/${song.youtube_id}/mqdefault.jpg`}
-                alt={song.title}
-                style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '0.75rem', marginBottom: '0.75rem' }}
-              />
-              <p style={{ fontWeight: 600, fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</p>
-              <p style={{ color: '#94A3B8', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.artist}</p>
-            </button>
-          ))}
-        </div>
+        <SongGrid songs={songs} onPlay={handlePlay} />
       )}
     </div>
   )

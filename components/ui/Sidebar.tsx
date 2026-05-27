@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Crown, Heart, House, LibraryBig, ListMusic, LogOut, Search, Target, Users } from 'lucide-react'
+import { Crown, Heart, House, LibraryBig, ListMusic, LogOut, Menu, Search, Target, Users, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types'
 
@@ -23,26 +23,35 @@ const navItems = [
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
   }
 
+  const closeMobile = () => setMobileOpen(false)
+
   return (
-    <aside style={{
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: '240px',
-      background: '#111118',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 40,
-      overflowY: 'auto',
-    }}>
+    <>
+      <button
+        type="button"
+        className="wavvy-mobile-menu-btn"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open menu"
+      >
+        <Menu size={20} />
+      </button>
+
+      {mobileOpen && (
+        <div
+          className="wavvy-sidebar-overlay"
+          onClick={closeMobile}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`wavvy-sidebar${mobileOpen ? ' open' : ''}`}>
       <style>{`
         .nav-item { transition: all 0.2s ease; }
         .nav-item:hover { background: rgba(255,255,255,0.05) !important; color: #F1F5F9 !important; }
@@ -52,13 +61,29 @@ export default function Sidebar({ profile }: SidebarProps) {
       `}</style>
 
       {/* Logo */}
-      <div style={{ padding: '1.5rem 1.25rem 1rem' }}>
+      <div style={{ padding: '1.5rem 1.25rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{
           fontFamily: "'Syne', sans-serif",
           fontSize: '1.6rem',
           fontWeight: 800,
           color: '#3B82F6',
         }}>Wavvy</span>
+        <button
+          type="button"
+          onClick={closeMobile}
+          aria-label="Close menu"
+          style={{
+            display: 'none',
+            background: 'transparent',
+            border: 'none',
+            color: '#94A3B8',
+            cursor: 'pointer',
+            padding: '0.25rem',
+          }}
+          className="wavvy-sidebar-close"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Nav */}
@@ -70,6 +95,7 @@ export default function Sidebar({ profile }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={closeMobile}
                 className={`nav-item${isActive ? ' active' : ''}`}
                 style={{
                   display: 'flex',
@@ -121,6 +147,7 @@ export default function Sidebar({ profile }: SidebarProps) {
             <Link
               key={m.mood}
               href={`/dashboard/mood/${m.mood}`}
+              onClick={closeMobile}
               className={`nav-item${isActive ? ' active' : ''}`}
               style={{
                 display: 'flex',
@@ -151,6 +178,7 @@ export default function Sidebar({ profile }: SidebarProps) {
             }} />
             <Link
               href="/admin"
+              onClick={closeMobile}
               className="nav-item admin-link"
               style={{
                 display: 'flex',
@@ -245,5 +273,6 @@ export default function Sidebar({ profile }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   )
 }

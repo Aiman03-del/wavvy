@@ -5,10 +5,10 @@ import { LibraryBig, Search } from 'lucide-react'
 
 export default function LibraryPage() {
   return (
-    <div style={{ padding: '2rem', maxWidth: '960px' }}>
+    <div className="wavvy-page-narrow">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
         <LibraryBig size={24} color="#60A5FA" />
-        <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2rem', fontWeight: 800, margin: 0 }}>
+        <h1 className="wavvy-page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           Your Library
         </h1>
       </div>

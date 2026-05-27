@@ -5,10 +5,10 @@ import { Heart, Music2 } from 'lucide-react'
 
 export default function LikedPage() {
   return (
-    <div style={{ padding: '2rem', maxWidth: '960px' }}>
+    <div className="wavvy-page-narrow">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
         <Heart size={24} color="#EC4899" />
-        <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2rem', fontWeight: 800, margin: 0 }}>
+        <h1 className="wavvy-page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           Liked Songs
         </h1>
       </div>

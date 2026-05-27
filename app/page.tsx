@@ -135,22 +135,7 @@ export default function LandingPage() {
       `}</style>
 
       {/* Navbar */}
-      <nav
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          padding: '1rem 2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          backdropFilter: 'blur(12px)',
-          background: 'rgba(10,10,15,0.8)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
+      <nav className="wavvy-landing-nav">
         <span
           style={{
             fontFamily: "'Syne', sans-serif",
@@ -441,11 +426,7 @@ export default function LandingPage() {
         </p>
 
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '1.25rem',
-          }}
+          className="wavvy-feature-grid"
         >
           {features.map((f, i) => (
             <div

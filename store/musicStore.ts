@@ -19,6 +19,7 @@ interface MusicStore {
   setProgress: (progress: number) => void
   setDuration: (duration: number) => void
   toggleFullScreen: () => void
+  closeFullScreen: () => void
   clearQueue: () => void
 }
 
@@ -78,5 +79,6 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   setDuration: (duration) => set({ duration }),
   toggleFullScreen: () =>
     set((state) => ({ isFullScreen: !state.isFullScreen })),
+  closeFullScreen: () => set({ isFullScreen: false }),
   clearQueue: () => set({ queue: [] }),
 }))

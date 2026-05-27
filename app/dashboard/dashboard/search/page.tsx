@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Frown, Music2, PartyPopper, Search, Smile, Target, TrendingUp, Wind, X } from 'lucide-react'
+import SongGrid from '@/components/ui/SongGrid'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import type { Song } from '@/types'
@@ -25,7 +26,7 @@ export default function SearchPage() {
   const [selectedGenre, setSelectedGenre] = useState('All')
   const [selectedMood, setSelectedMood] = useState('All')
   const [searched, setSearched] = useState(false)
-  const { playSong } = useMusicStore()
+  const { playSong, currentSong, isPlaying } = useMusicStore()
 
   const search = useCallback(async () => {
     setLoading(true)
@@ -82,28 +83,19 @@ export default function SearchPage() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px' }}>
+    <div className="wavvy-page">
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
         .sk { background: #16161F; border-radius: 0.75rem; animation: pulse 1.5s ease infinite; }
         .filter-chip { transition: all 0.18s ease; cursor: pointer; border: none; font-family: inherit; }
         .filter-chip:hover { opacity: 0.85; }
-        .song-card { transition: all 0.2s ease; cursor: pointer; }
-        .song-card:hover { background: #1E1E2A !important; transform: translateY(-2px); border-color: rgba(59,130,246,0.3) !important; }
         .search-input:focus { outline: none; border-color: rgba(59,130,246,0.6) !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
       `}</style>
 
-      {/* Header */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{
-          fontFamily: "'Syne', sans-serif",
-          fontSize: '2rem', fontWeight: 800,
-          letterSpacing: '-0.5px', marginBottom: '0.25rem',
-        }}>Search</h1>
-        <p style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
-          Find songs, artists, albums
-        </p>
-      </div>
+      <header className="wavvy-page-header">
+        <h1 className="wavvy-page-greeting">Search</h1>
+        <p className="wavvy-page-subtitle">Find songs, artists, albums</p>
+      </header>
 
       {/* Search Bar */}
       <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
@@ -225,13 +217,9 @@ export default function SearchPage() {
 
       {/* Loading */}
       {loading && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '1rem',
-        }}>
-          {Array(8).fill(0).map((_, i) => (
-            <div key={i} className="sk" style={{ height: '230px' }} />
+        <div className="wavvy-song-grid">
+          {Array(6).fill(0).map((_, i) => (
+            <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
           ))}
         </div>
       )}
@@ -252,77 +240,13 @@ export default function SearchPage() {
 
       {/* Song Grid */}
       {!loading && songs.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '1rem',
-        }}>
-          {songs.map(song => (
-            <SongCard key={song.id} song={song} onPlay={handlePlay} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SongCard({ song, onPlay }: { song: Song; onPlay: (s: Song) => void }) {
-  const { currentSong, isPlaying } = useMusicStore()
-  const isActive = currentSong?.id === song.id
-
-  return (
-    <div
-      className="song-card"
-      onClick={() => onPlay(song)}
-      style={{
-        background: isActive ? 'rgba(59,130,246,0.1)' : '#16161F',
-        border: `1px solid ${isActive ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.06)'}`,
-        borderRadius: '1.25rem',
-        padding: '1rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Thumbnail */}
-      <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
-        <img
-          src={song.thumbnail_url || `https://img.youtube.com/vi/${song.youtube_id}/mqdefault.jpg`}
-          alt={song.title}
-          style={{
-            width: '100%', aspectRatio: '1',
-            objectFit: 'cover', borderRadius: '0.75rem',
-            display: 'block',
-          }}
+        <SongGrid
+          songs={songs}
+          onPlay={handlePlay}
+          showPlayCount
+          getIsActive={(song) => currentSong?.id === song.id}
+          getIsPlaying={(song) => currentSong?.id === song.id && isPlaying}
         />
-        {isActive && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'rgba(59,130,246,0.3)',
-            borderRadius: '0.75rem',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.5rem',
-          }}>
-            {isPlaying ? '⏸' : '▶'}
-          </div>
-        )}
-      </div>
-
-      <p style={{
-        fontWeight: 600, fontSize: '0.88rem',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        color: isActive ? '#60A5FA' : '#F1F5F9',
-      }}>{song.title}</p>
-      <p style={{
-        color: '#94A3B8', fontSize: '0.78rem',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        marginTop: '0.15rem',
-      }}>{song.artist}</p>
-
-      {/* Play count */}
-      {song.play_count > 0 && (
-        <p style={{
-          color: '#475569', fontSize: '0.7rem', marginTop: '0.4rem',
-        }}>▶ {song.play_count.toLocaleString()} plays</p>
       )}
     </div>
   )
