@@ -5,17 +5,35 @@ import { useMusicStore } from '@/store/musicStore'
 
 export default function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null)
+  const lastSavedSecondRef = useRef(-1)
   const {
     currentSong,
     isPlaying,
     volume,
+    progress,
     setProgress,
     setDuration,
     onTrackEnd,
   } = useMusicStore()
 
+  const persistSession = (seconds: number) => {
+    if (!currentSong || typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(
+        'wavvy:last-session',
+        JSON.stringify({
+          song: currentSong,
+          progress: Math.max(0, seconds),
+        })
+      )
+    } catch {
+      // ignore storage failures
+    }
+  }
+
   useEffect(() => {
     if (!currentSong) return
+    lastSavedSecondRef.current = -1
 
     const fetchAndPlay = async () => {
       try {
@@ -82,12 +100,21 @@ export default function AudioPlayer() {
       ref={audioRef}
       onTimeUpdate={() => {
         if (audioRef.current) {
-          setProgress(audioRef.current.currentTime)
+          const seconds = audioRef.current.currentTime
+          setProgress(seconds)
+          const rounded = Math.floor(seconds)
+          if (rounded !== lastSavedSecondRef.current) {
+            lastSavedSecondRef.current = rounded
+            persistSession(seconds)
+          }
         }
       }}
       onLoadedMetadata={() => {
         if (audioRef.current) {
           setDuration(audioRef.current.duration)
+          if (progress > 0 && progress < audioRef.current.duration) {
+            audioRef.current.currentTime = progress
+          }
         }
       }}
       onEnded={() => {

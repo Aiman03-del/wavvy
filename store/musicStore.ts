@@ -35,7 +35,10 @@ interface MusicStore {
   toggleFullScreen: () => void
   closeFullScreen: () => void
   clearQueue: () => void
+  hydrateFromStorage: () => void
 }
+
+const LAST_SESSION_KEY = 'wavvy:last-session'
 
 export const useMusicStore = create<MusicStore>((set, get) => ({
   currentSong: null,
@@ -207,4 +210,29 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
     set((state) => ({ isFullScreen: !state.isFullScreen })),
   closeFullScreen: () => set({ isFullScreen: false }),
   clearQueue: () => set({ queue: [], sourceList: [], history: [] }),
+  hydrateFromStorage: () => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const raw = window.localStorage.getItem(LAST_SESSION_KEY)
+      if (!raw) return
+
+      const parsed = JSON.parse(raw) as {
+        song?: Song | null
+        progress?: number
+      }
+
+      if (!parsed.song) return
+
+      set({
+        currentSong: parsed.song,
+        sourceList: [parsed.song],
+        queue: [],
+        progress: Math.max(0, parsed.progress ?? 0),
+        isPlaying: false,
+      })
+    } catch {
+      // ignore invalid cached payload
+    }
+  },
 }))

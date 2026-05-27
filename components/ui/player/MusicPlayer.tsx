@@ -9,9 +9,13 @@ import FullScreenPlayer from '@/components/ui/player/FullScreenPlayer'
 import PlayerControls from '@/components/ui/player/PlayerControls'
 
 export default function MusicPlayer() {
-  const { currentSong, toggleFullScreen } = useMusicStore()
+  const { currentSong, toggleFullScreen, hydrateFromStorage } = useMusicStore()
   const barRef = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    hydrateFromStorage()
+  }, [hydrateFromStorage])
 
   useEffect(() => {
     if (currentSong && !shown) {
