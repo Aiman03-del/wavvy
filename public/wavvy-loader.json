@@ -1,0 +1,31 @@
+'use client'
+import Lottie from 'lottie-react'
+import wavvyAnimation from '../../public/wavvy-loader.json'
+
+export default function WavvyLoader() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#0A0A0F',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '1rem',
+    }}>
+      <Lottie
+        animationData={wavvyAnimation}
+        loop={true}
+        style={{ width: 180, height: 180 }}
+      />
+      <p style={{
+        color: '#475569',
+        fontSize: '0.85rem',
+        fontFamily: "'DM Sans', sans-serif",
+        letterSpacing: '0.05em',
+      }}>
+        Loading...
+      </p>
+    </div>
+  )
+}

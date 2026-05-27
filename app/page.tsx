@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Bell, Heart, ListMusic, Music2, Play, Search, Target } from 'lucide-react'
+import WavvyLogo from '@/components/ui/WavvyLogo'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -136,17 +137,7 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="wavvy-landing-nav">
-        <span
-          style={{
-            fontFamily: "'Syne', sans-serif",
-            fontSize: '1.5rem',
-            fontWeight: 800,
-            color: '#3B82F6',
-            letterSpacing: '-0.5px',
-          }}
-        >
-          Wavvy
-        </span>
+        <WavvyLogo href="/" size={40} showLabel={false} />
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link
             href="/login"
@@ -422,7 +413,7 @@ export default function LandingPage() {
             fontSize: '1rem',
           }}
         >
-          Wavvy is packed with features to make your music experience perfect.
+          This platform is packed with features to make your music experience perfect.
         </p>
 
         <div
@@ -500,7 +491,7 @@ export default function LandingPage() {
               fontSize: '1rem',
             }}
           >
-            Join Wavvy today — it's completely free, forever.
+            Join today — it&apos;s completely free, forever.
           </p>
           <Link
             href="/register"
@@ -533,16 +524,7 @@ export default function LandingPage() {
           zIndex: 2,
         }}
       >
-        <span
-          style={{
-            fontFamily: "'Syne', sans-serif",
-            fontWeight: 800,
-            color: '#3B82F6',
-            marginRight: '0.5rem',
-          }}
-        >
-          Wavvy
-        </span>
+        <WavvyLogo href="/" size={28} showLabel={false} />
         © 2025 — Free music for everyone.
       </footer>
     </main>

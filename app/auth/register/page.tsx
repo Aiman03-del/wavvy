@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { gsap } from 'gsap'
 import { Eye, EyeOff, Music2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import WavvyLogo from '@/components/ui/WavvyLogo'
+import WavvyLoader from '@/components/ui/WavvyLoader'
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wavvy-five.vercel.app'
 
@@ -132,6 +134,10 @@ export default function RegisterPage() {
           font-weight: 600;
           font-family: 'DM Sans', sans-serif;
           cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
           transition: all 0.2s;
         }
         .auth-btn:hover:not(:disabled) {
@@ -158,14 +164,7 @@ export default function RegisterPage() {
         zIndex: 1,
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{
-              fontFamily: "'Syne', sans-serif",
-              fontSize: '2rem',
-              fontWeight: 800,
-              color: '#3B82F6',
-            }}>Wavvy</span>
-          </Link>
+          <WavvyLogo href="/" size={56} showLabel={false} />
           <p style={{ color: '#94A3B8', fontSize: '0.9rem', marginTop: '0.5rem' }}>
             Create your free account
           </p>
@@ -184,7 +183,7 @@ export default function RegisterPage() {
             </div>
             <p style={{ color: '#86EFAC', fontWeight: 600 }}>Account created!</p>
             <p style={{ color: '#94A3B8', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-              Redirecting you to Wavvy...
+              Redirecting you to your account...
             </p>
           </div>
         ) : (
@@ -256,7 +255,7 @@ export default function RegisterPage() {
             )}
 
             <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Free Account'}
+              {loading ? <WavvyLoader size={18} /> : 'Create Free Account'}
             </button>
           </form>
         )}

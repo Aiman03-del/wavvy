@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle2, Clock, Music2, Send, Target, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Send, Target, XCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import WavvyLoader from '@/components/ui/WavvyLoader'
 
 interface Request {
   id: string
@@ -176,12 +177,14 @@ export default function RequestPage() {
               cursor: submitting || !form.youtube_url.trim() ? 'not-allowed' : 'pointer',
               fontFamily: "'DM Sans', sans-serif",
               transition: 'all 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
             }}
           >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                {submitting ? <Music2 size={16} /> : <Send size={16} />}
-                {submitting ? 'Submitting...' : 'Submit Request'}
-              </span>
+              {submitting ? <WavvyLoader size={18} /> : <Send size={16} />}
+              {submitting ? 'Submitting...' : 'Submit Request'}
           </button>
         </div>
       </div>
@@ -193,9 +196,9 @@ export default function RequestPage() {
         </h2>
 
         {loading ? (
-          Array(3).fill(0).map((_,i) => (
-            <div key={i} className="sk" style={{ height: '72px', marginBottom: '0.5rem' }} />
-          ))
+          <div style={{ padding: '2.5rem 0' }}>
+            <WavvyLoader fullScreen={false} size={72} />
+          </div>
         ) : myRequests.length === 0 ? (
           <div style={{
             textAlign: 'center', padding: '2.5rem',

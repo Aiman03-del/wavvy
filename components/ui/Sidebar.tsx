@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Crown, Heart, House, LibraryBig, ListMusic, LogOut, Menu, Search, Target, Users, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types'
+import WavvyLogo from '@/components/ui/WavvyLogo'
 
 interface SidebarProps {
   profile: Profile | null
@@ -61,18 +62,15 @@ export default function Sidebar({ profile }: SidebarProps) {
       `}</style>
 
       {/* Logo */}
-      <div style={{ padding: '1.5rem 1.25rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{
-          fontFamily: "'Syne', sans-serif",
-          fontSize: '1.6rem',
-          fontWeight: 800,
-          color: '#3B82F6',
-        }}>Wavvy</span>
+      <div style={{ padding: '1.5rem 1.25rem 1rem', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <WavvyLogo href="/dashboard" size={108} zoom={1.45} showLabel={false} />
         <button
           type="button"
           onClick={closeMobile}
           aria-label="Close menu"
           style={{
+            position: 'absolute',
+            right: '1.25rem',
             display: 'none',
             background: 'transparent',
             border: 'none',

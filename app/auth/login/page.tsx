@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { gsap } from 'gsap'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import WavvyLogo from '@/components/ui/WavvyLogo'
+import WavvyLoader from '@/components/ui/WavvyLoader'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -103,6 +105,10 @@ export default function LoginPage() {
           font-weight: 600;
           font-family: 'DM Sans', sans-serif;
           cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
           transition: all 0.2s;
         }
         .auth-btn:hover:not(:disabled) {
@@ -131,14 +137,7 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{
-              fontFamily: "'Syne', sans-serif",
-              fontSize: '2rem',
-              fontWeight: 800,
-              color: '#3B82F6',
-            }}>Wavvy</span>
-          </Link>
+          <WavvyLogo href="/" size={56} showLabel={false} />
           <p style={{
             color: '#94A3B8', fontSize: '0.9rem', marginTop: '0.5rem'
           }}>Welcome back! Sign in to continue.</p>
@@ -198,12 +197,12 @@ export default function LoginPage() {
           )}
 
           <button type="submit" className="auth-btn" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? <WavvyLoader size={18} /> : 'Sign In'}
           </button>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', color: '#94A3B8', fontSize: '0.9rem' }}>
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/register" style={{ color: '#3B82F6', textDecoration: 'none', fontWeight: 500 }}>
             Sign up free
           </Link>

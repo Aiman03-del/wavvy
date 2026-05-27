@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ListMusic, Music2, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import WavvyLoader from '@/components/ui/WavvyLoader'
 import type { Song } from '@/types'
 
 interface PlaylistRow {
@@ -117,20 +118,20 @@ export default function PlaylistsPage() {
             cursor: creating || !newName.trim() ? 'not-allowed' : 'pointer',
             fontWeight: 600,
             fontFamily: "'DM Sans', sans-serif",
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.35rem',
           }}
         >
-          <Plus size={14} />
+          {creating ? <WavvyLoader size={16} /> : <Plus size={14} />}
           {creating ? 'Creating...' : 'Create'}
         </button>
       </div>
 
       {loading && (
-        <div className="wavvy-song-grid">
-          {Array(4)
-            .fill(0)
-            .map((_, i) => (
-              <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
-            ))}
+        <div style={{ padding: '3rem 0' }}>
+          <WavvyLoader fullScreen={false} size={72} />
         </div>
       )}
 

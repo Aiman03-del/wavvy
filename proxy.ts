@@ -24,6 +24,10 @@ export async function proxy(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
+  if (req.nextUrl.pathname === '/' && session) {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
   if (req.nextUrl.pathname.startsWith('/dashboard')) {
     if (!session) {
       return NextResponse.redirect(new URL('/auth/login', req.url))
@@ -58,5 +62,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/auth/login', '/auth/register'],
+  matcher: ['/', '/dashboard/:path*', '/admin/:path*', '/auth/login', '/auth/register'],
 }
