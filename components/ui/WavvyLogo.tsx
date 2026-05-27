@@ -17,7 +17,7 @@ export default function WavvyLogo({
   className,
   showLabel = false,
   zoom = 1,
-}: WavvyLogoProps): JSX.Element {
+}: WavvyLogoProps): React.ReactElement {
   const content = (
     <>
       <span style={{
