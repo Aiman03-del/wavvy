@@ -160,7 +160,29 @@ export default function DashboardPage() {
 
 function SongGrid({ songs, onPlay }: { songs: Song[]; onPlay: (song: Song) => void }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+    <div className="song-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+      <style>{`
+        @media (max-width: 767px) {
+          .song-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.75rem !important;
+          }
+          .song-grid > div {
+            padding: 0.75rem !important;
+            border-radius: 1rem !important;
+          }
+          .song-grid > div img {
+            margin-bottom: 0.6rem !important;
+            border-radius: 0.65rem !important;
+          }
+          .song-grid > div p {
+            font-size: 0.82rem !important;
+          }
+          .song-grid > div p:last-child {
+            font-size: 0.72rem !important;
+          }
+        }
+      `}</style>
       {songs.map((song, index) => (
         <div
           key={`${song.id}-${index}`}
@@ -203,6 +225,12 @@ function LoadingSkeleton() {
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
         .sk { background: #16161F; border-radius: 0.75rem; animation: pulse 1.5s ease infinite; }
+        @media (max-width: 767px) {
+          .dashboard-skeleton-songs {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.75rem !important;
+          }
+        }
       `}</style>
       <div className="sk" style={{ height: '2.5rem', width: '300px', marginBottom: '2rem' }} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', marginBottom: '2.5rem' }}>
@@ -210,7 +238,7 @@ function LoadingSkeleton() {
           <div key={index} className="sk" style={{ height: '90px', borderRadius: '1rem' }} />
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+      <div className="dashboard-skeleton-songs" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
         {Array(8).fill(0).map((_, index) => (
           <div key={index} className="sk" style={{ height: '230px' }} />
         ))}

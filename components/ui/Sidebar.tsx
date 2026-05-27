@@ -9,6 +9,7 @@ import type { Profile } from '@/types'
 
 interface SidebarProps {
   profile: Profile | null
+  mobile?: boolean
 }
 
 const navItems = [
@@ -20,7 +21,7 @@ const navItems = [
   { href: '/dashboard/request', icon: Target, label: 'Request a Song' },
 ]
 
-export default function Sidebar({ profile }: SidebarProps) {
+export default function Sidebar({ profile, mobile = false }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -31,17 +32,20 @@ export default function Sidebar({ profile }: SidebarProps) {
 
   return (
     <aside style={{
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: '240px',
+      position: mobile ? 'static' : 'fixed',
+      left: mobile ? 'auto' : 0,
+      top: mobile ? 'auto' : 0,
+      bottom: mobile ? 'auto' : 0,
+      width: mobile ? '100%' : '240px',
+      minHeight: mobile ? '100%' : '100vh',
+      height: mobile ? '100%' : '100vh',
       background: '#111118',
       borderRight: '1px solid rgba(255,255,255,0.06)',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 40,
       overflowY: 'auto',
+      overflowX: 'hidden',
     }}>
       <style>{`
         .nav-item { transition: all 0.2s ease; }
@@ -55,7 +59,7 @@ export default function Sidebar({ profile }: SidebarProps) {
       <div style={{ padding: '1.5rem 1.25rem 1rem' }}>
         <span style={{
           fontFamily: "'Syne', sans-serif",
-          fontSize: '1.6rem',
+          fontSize: mobile ? '1.45rem' : '1.6rem',
           fontWeight: 800,
           color: '#3B82F6',
         }}>Wavvy</span>
@@ -75,7 +79,7 @@ export default function Sidebar({ profile }: SidebarProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.75rem',
-                  padding: '0.65rem 0.85rem',
+                    padding: mobile ? '0.72rem 0.85rem' : '0.65rem 0.85rem',
                   borderRadius: '0.75rem',
                   textDecoration: 'none',
                   color: isActive ? '#60A5FA' : '#94A3B8',
@@ -126,7 +130,7 @@ export default function Sidebar({ profile }: SidebarProps) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem',
-                padding: '0.55rem 0.85rem',
+                padding: mobile ? '0.68rem 0.85rem' : '0.55rem 0.85rem',
                 borderRadius: '0.75rem',
                 textDecoration: 'none',
                 color: isActive ? '#60A5FA' : '#94A3B8',
@@ -173,7 +177,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* User Profile */}
       <div style={{
-        padding: '1rem 0.75rem',
+        padding: mobile ? '1rem 0.9rem 1.1rem' : '1rem 0.75rem',
         borderTop: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div style={{

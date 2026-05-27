@@ -48,10 +48,11 @@ export default function MusicPlayer() {
       <AudioPlayer />
       <div
         ref={barRef}
+        className="music-player-shell"
         style={{
           position: 'fixed',
           bottom: 0,
-          left: '240px',
+          left: 'var(--sidebar-width, 240px)',
           right: 0,
           height: '88px',
           background: 'rgba(17,17,24,0.95)',
@@ -64,6 +65,20 @@ export default function MusicPlayer() {
           gap: '1rem',
         }}
       >
+        <style>{`
+          @media (max-width: 767px) {
+            .music-player-shell {
+              left: 0 !important;
+              height: auto !important;
+              padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom)) !important;
+              gap: 0.85rem !important;
+              flex-wrap: wrap;
+            }
+            .music-player-shell > div {
+              flex: 1 1 100% !important;
+            }
+          }
+        `}</style>
         {/* Song Info */}
         <div
           style={{
