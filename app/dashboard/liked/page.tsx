@@ -30,7 +30,7 @@ export default function LikedPage() {
         .order('created_at', { ascending: false })
 
       const likedSongs =
-        (data?.map((row: { song: Song | null }) => row.song).filter(Boolean) as Song[]) || []
+        (data?.map((row: { song: any }) => row.song as Song).filter(Boolean) as Song[]) || []
       setSongs(likedSongs)
       setLoading(false)
     }

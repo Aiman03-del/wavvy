@@ -21,6 +21,7 @@ import {
   XCircle,
   X,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import type { Song, Profile } from '@/types'
 
@@ -77,6 +78,8 @@ export default function AdminPage() {
 
   // Users state
   const [users, setUsers] = useState<Profile[]>([])
+  const [pendingDeleteSongId, setPendingDeleteSongId] = useState<string | null>(null)
+  const [pendingRoleUser, setPendingRoleUser] = useState<Profile | null>(null)
 
   // Stats
   const [stats, setStats] = useState({ songs: 0, users: 0, requests: 0, pending: 0 })
@@ -252,8 +255,18 @@ export default function AdminPage() {
   }
 
   const deleteSong = async (id: string) => {
-    if (!confirm('Delete this song? This cannot be undone.')) return
-    await supabase.from('songs').delete().eq('id', id)
+    setPendingDeleteSongId(id)
+  }
+
+  const confirmDeleteSong = async () => {
+    if (!pendingDeleteSongId) return
+    const { error } = await supabase.from('songs').delete().eq('id', pendingDeleteSongId)
+    if (error) {
+      toast.error('Failed to delete song')
+      return
+    }
+    toast.success('Song deleted')
+    setPendingDeleteSongId(null)
     loadAll()
   }
 
@@ -268,10 +281,25 @@ export default function AdminPage() {
   // ─── Users ────────────────────────────────────────────
 
   const toggleRole = async (user: Profile) => {
-    const newRole = user.role === 'admin' ? 'user' : 'admin'
-    if (!confirm(`Make ${user.username} ${newRole === 'admin' ? 'an admin' : 'a regular user'}?`)) return
-    await supabase.from('profiles').update({ role: newRole }).eq('id', user.id)
-    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u))
+    setPendingRoleUser(user)
+  }
+
+  const confirmToggleRole = async () => {
+    if (!pendingRoleUser) return
+    const newRole = pendingRoleUser.role === 'admin' ? 'user' : 'admin'
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', pendingRoleUser.id)
+    if (error) {
+      toast.error('Failed to update role')
+      return
+    }
+    setUsers(prev =>
+      prev.map(u => u.id === pendingRoleUser.id ? { ...u, role: newRole } : u)
+    )
+    toast.success(`Role updated for ${pendingRoleUser.username}`)
+    setPendingRoleUser(null)
   }
 
   // ─── Loading / Auth ───────────────────────────────────
@@ -889,6 +917,86 @@ export default function AdminPage() {
                   {savingSong ? 'Saving...' : editingSong ? 'Save Changes' : 'Add Song'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(pendingDeleteSongId || pendingRoleUser) && (
+        <div
+          onClick={() => {
+            setPendingDeleteSongId(null)
+            setPendingRoleUser(null)
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 120,
+            background: 'rgba(0,0,0,0.72)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            className="modal-anim"
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '420px',
+              background: '#16161F',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '1rem',
+              padding: '1rem',
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+              {pendingDeleteSongId ? 'Delete Song?' : 'Change User Role?'}
+            </h3>
+            <p style={{ margin: '0.5rem 0 0', color: '#94A3B8', fontSize: '0.85rem' }}>
+              {pendingDeleteSongId
+                ? 'This action cannot be undone.'
+                : `Make ${pendingRoleUser?.username} ${
+                    pendingRoleUser?.role === 'admin' ? 'a regular user' : 'an admin'
+                  }?`}
+            </p>
+            <div style={{ display: 'flex', gap: '0.65rem', marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingDeleteSongId(null)
+                  setPendingRoleUser(null)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '0.65rem',
+                  borderRadius: '0.7rem',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'transparent',
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={pendingDeleteSongId ? confirmDeleteSong : confirmToggleRole}
+                style={{
+                  flex: 1,
+                  padding: '0.65rem',
+                  borderRadius: '0.7rem',
+                  border: 'none',
+                  background: pendingDeleteSongId ? '#EF4444' : '#8B5CF6',
+                  color: '#fff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Confirm
+              </button>
             </div>
           </div>
         </div>

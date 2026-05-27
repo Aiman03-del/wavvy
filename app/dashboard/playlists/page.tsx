@@ -10,7 +10,7 @@ interface PlaylistRow {
   id: string
   name: string
   created_at: string
-  playlist_songs?: Array<{ song?: Song | null }>
+  playlist_songs?: Array<{ song?: Song | Song[] | null }>
 }
 
 export default function PlaylistsPage() {
@@ -161,7 +161,7 @@ export default function PlaylistsPage() {
         <div style={{ display: 'grid', gap: '0.75rem' }}>
           {playlists.map((playlist) => {
             const songs = (playlist.playlist_songs || [])
-              .map((row) => row.song)
+              .map((row) => (Array.isArray(row.song) ? row.song[0] : row.song))
               .filter(Boolean) as Song[]
             return (
               <div
