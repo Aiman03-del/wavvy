@@ -1,5 +1,6 @@
 'use client'
 
+import { Pause, Play } from 'lucide-react'
 import type { Song } from '@/types'
 
 interface SongCardProps {
@@ -31,7 +32,11 @@ export default function SongCard({
         <img className="wavvy-song-card-thumb" src={thumb} alt={song.title} />
         {isActive && (
           <span className="wavvy-song-card-play-badge" aria-hidden>
-            {isPlaying ? '⏸' : '▶'}
+            {isPlaying ? (
+              <Pause size={18} fill="currentColor" />
+            ) : (
+              <Play size={18} fill="currentColor" />
+            )}
           </span>
         )}
       </div>
@@ -40,7 +45,8 @@ export default function SongCard({
         <p className="wavvy-song-card-artist">{song.artist}</p>
         {showPlayCount && (song.play_count ?? 0) > 0 && (
           <p className="wavvy-song-card-plays">
-            ▶ {(song.play_count ?? 0).toLocaleString()} plays
+            <Play size={12} aria-hidden />
+            <span>{(song.play_count ?? 0).toLocaleString()} plays</span>
           </p>
         )}
       </div>

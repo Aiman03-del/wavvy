@@ -1,3 +1,6 @@
+import type { LucideIcon } from 'lucide-react'
+import { Frown, PartyPopper, Smile, Target, Wind } from 'lucide-react'
+
 export interface Profile {
   id: string
   username: string
@@ -78,10 +81,13 @@ export interface RecentlyPlayed {
 
 export type Mood = 'happy' | 'sad' | 'chill' | 'party' | 'focus'
 
-export const MOOD_CONFIG = {
-  happy: { emoji: '😊', label: 'Happy', color: 'from-yellow-500 to-orange-500' },
-  sad: { emoji: '😢', label: 'Sad', color: 'from-blue-500 to-indigo-500' },
-  chill: { emoji: '😌', label: 'Chill', color: 'from-green-500 to-teal-500' },
-  party: { emoji: '🎉', label: 'Party', color: 'from-pink-500 to-purple-500' },
-  focus: { emoji: '🎯', label: 'Focus', color: 'from-gray-500 to-slate-500' },
+export const MOOD_CONFIG: Record<
+  Mood,
+  { icon: LucideIcon; label: string; color: string }
+> = {
+  happy: { icon: Smile, label: 'Happy', color: 'from-yellow-500 to-orange-500' },
+  sad: { icon: Frown, label: 'Sad', color: 'from-blue-500 to-indigo-500' },
+  chill: { icon: Wind, label: 'Chill', color: 'from-green-500 to-teal-500' },
+  party: { icon: PartyPopper, label: 'Party', color: 'from-pink-500 to-purple-500' },
+  focus: { icon: Target, label: 'Focus', color: 'from-gray-500 to-slate-500' },
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { gsap } from 'gsap'
+import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
@@ -82,10 +83,11 @@ export default function LoginPage() {
           border: 0;
           background: transparent;
           color: #94A3B8;
-          font-size: 0.8rem;
-          font-weight: 600;
           cursor: pointer;
-          padding: 0.25rem 0;
+          padding: 0.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .password-toggle:hover {
           color: #E2E8F0;
@@ -165,7 +167,7 @@ export default function LoginPage() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 className="auth-input"
-                style={{ paddingRight: '4.5rem' }}
+                style={{ paddingRight: '2.75rem' }}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -177,7 +179,7 @@ export default function LoginPage() {
                 onClick={() => setShowPassword((current) => !current)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? <EyeOff size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
               </button>
             </div>
           </div>

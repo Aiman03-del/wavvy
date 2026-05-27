@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle2, Music2, Send, Target } from 'lucide-react'
+import { CheckCircle2, Clock, Music2, Send, Target, XCircle } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Request {
@@ -57,10 +58,38 @@ export default function RequestPage() {
     setSubmitting(false)
   }
 
-  const statusStyle = (status: string) => {
-    if (status === 'approved') return { color: '#34D399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.2)', label: '✅ Approved' }
-    if (status === 'rejected') return { color: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)', label: '❌ Rejected' }
-    return { color: '#FCD34D', bg: 'rgba(252,211,77,0.1)', border: 'rgba(252,211,77,0.2)', label: '⏳ Pending' }
+  const statusStyle = (status: string): {
+    color: string
+    bg: string
+    border: string
+    label: string
+    Icon: LucideIcon
+  } => {
+    if (status === 'approved') {
+      return {
+        color: '#34D399',
+        bg: 'rgba(52,211,153,0.1)',
+        border: 'rgba(52,211,153,0.2)',
+        label: 'Approved',
+        Icon: CheckCircle2,
+      }
+    }
+    if (status === 'rejected') {
+      return {
+        color: '#F87171',
+        bg: 'rgba(248,113,113,0.1)',
+        border: 'rgba(248,113,113,0.2)',
+        label: 'Rejected',
+        Icon: XCircle,
+      }
+    }
+    return {
+      color: '#FCD34D',
+      bg: 'rgba(252,211,77,0.1)',
+      border: 'rgba(252,211,77,0.2)',
+      label: 'Pending',
+      Icon: Clock,
+    }
   }
 
   return (
@@ -203,7 +232,11 @@ export default function RequestPage() {
                     fontSize: '0.75rem',
                     fontWeight: 600,
                     flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
                   }}>
+                    <s.Icon size={14} aria-hidden />
                     {s.label}
                   </div>
                 </div>

@@ -133,7 +133,7 @@
 :root {
   --wavvy-sidebar-offset: 240px;
   --wavvy-sidebar-drawer-width: 240px;
-  --wavvy-player-height: 88px;
+  --wavvy-player-height: 96px;
   --wavvy-mobile-header: 56px;
 }
 
@@ -296,6 +296,9 @@ body {
   margin: 0.35rem 0 0;
   color: #475569;
   font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 @media (max-width: 640px) {
@@ -399,17 +402,217 @@ body {
   bottom: 0;
   left: var(--wavvy-sidebar-offset);
   right: 0;
-  height: var(--wavvy-player-height);
-  background: rgba(17, 17, 24, 0.95);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  display: flex;
-  align-items: center;
-  padding: 0 1.5rem;
   z-index: 50;
-  gap: 1rem;
+  background: rgba(17, 17, 24, 0.97);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.6rem 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
 }
 
+.wavvy-player-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.wavvy-player-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.wavvy-player-meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wavvy-player-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wavvy-player-artist {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wavvy-player-expand {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+.wavvy-player-expand:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Player controls (bar + fullscreen) */
+.wavvy-player-controls-root {
+  width: 100%;
+}
+
+.wavvy-player-controls-root--fullscreen {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.wavvy-player-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  margin-bottom: 0.85rem;
+}
+
+.wavvy-player-controls-root:not(.wavvy-player-controls-root--fullscreen)
+  .wavvy-player-progress-row {
+  margin-bottom: 0.35rem;
+}
+
+.wavvy-player-time {
+  color: #64748b;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  min-width: 2.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.wavvy-player-time:last-child {
+  text-align: right;
+}
+
+.wavvy-player-progress-bar {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.wavvy-player-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 999px;
+  transition: width 0.25s linear;
+  pointer-events: none;
+}
+
+.wavvy-player-buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.wavvy-player-controls-root--fullscreen .wavvy-player-buttons-row {
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+  padding: 0 0.25rem;
+}
+
+.wavvy-player-icon-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+
+.wavvy-player-controls-root--fullscreen .wavvy-player-icon-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.wavvy-player-icon-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.wavvy-player-icon-btn.is-active {
+  color: #60a5fa;
+}
+
+.wavvy-player-repeat-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wavvy-player-play-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #3b82f6;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0 0.25rem;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.wavvy-player-controls-root--fullscreen .wavvy-player-play-btn {
+  width: 52px;
+  height: 52px;
+  margin: 0 0.35rem;
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.45);
+}
+
+.wavvy-player-play-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.5);
+}
+
+/* Volume UI removed */
+
+/* Legacy class aliases — keep for compatibility */
 .wavvy-player-info {
   display: flex;
   align-items: center;
@@ -529,99 +732,26 @@ body {
   font-size: 0.85rem;
 }
 
-.wavvy-fullscreen-progress {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  margin-bottom: 1.75rem;
+.wavvy-fullscreen-art-wrap.is-playing .wavvy-fullscreen-art {
+  animation: wavvy-art-pulse 3s ease-in-out infinite;
 }
 
-.wavvy-fullscreen-time {
-  color: #475569;
-  font-size: 0.75rem;
-  flex-shrink: 0;
-  min-width: 2.5rem;
+@keyframes wavvy-art-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
 }
 
-.wavvy-fullscreen-time:last-child {
-  text-align: right;
-}
-
-.wavvy-fullscreen-progress-bar {
-  flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.wavvy-fullscreen-progress-fill {
-  height: 100%;
-  background: #3b82f6;
-  border-radius: 999px;
-  transition: width 0.3s linear;
-}
-
-.wavvy-fullscreen-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.wavvy-fullscreen-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-}
-
-.wavvy-fullscreen-btn:hover {
-  color: #f1f5f9;
-}
-
+.wavvy-fullscreen-progress,
+.wavvy-fullscreen-controls,
+.wavvy-fullscreen-volume,
+.wavvy-fullscreen-btn,
 .wavvy-fullscreen-play {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: #3b82f6;
-  border: none;
-  color: #fff;
-  font-size: 1.75rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.45);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.wavvy-fullscreen-play:hover {
-  transform: scale(1.05);
-  box-shadow: 0 12px 40px rgba(59, 130, 246, 0.55);
-}
-
-.wavvy-fullscreen-volume {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  max-width: 280px;
-  color: #94a3b8;
-}
-
-.wavvy-fullscreen-volume input[type="range"] {
-  flex: 1;
-  accent-color: #3b82f6;
-  cursor: pointer;
+  display: none;
 }
 
 /* Admin */
@@ -694,7 +824,7 @@ body {
 @media (max-width: 768px) {
   :root {
     --wavvy-sidebar-offset: 0px;
-    --wavvy-player-height: 130px;
+    --wavvy-player-height: 148px;
   }
 
   .wavvy-main {
@@ -738,24 +868,45 @@ body {
 
   .wavvy-player {
     left: 0;
-    height: auto;
-    min-height: var(--wavvy-player-height);
-    flex-direction: column;
-    padding: 0.65rem 1rem 0.75rem;
-    gap: 0.5rem;
+    padding: 0.55rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.35rem;
   }
 
-  .wavvy-player-info {
-    flex: none;
-    width: 100%;
-  }
-
-  .wavvy-player-volume {
+  .wavvy-player-expand {
     display: none;
   }
 
-  .wavvy-player-controls {
-    width: 100%;
+  .wavvy-player-buttons-row {
+    gap: 0.15rem;
+  }
+
+  .wavvy-player-icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .wavvy-player-play-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  .wavvy-player-controls-root--fullscreen .wavvy-player-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .wavvy-player-controls-root--fullscreen .wavvy-player-play-btn {
+    width: 48px;
+    height: 48px;
+    margin: 0 0.2rem;
+  }
+
+  .wavvy-player-controls-root--fullscreen .wavvy-player-buttons-row {
+    gap: 0.25rem;
+  }
+
+  .wavvy-player-progress-bar {
+    height: 6px;
   }
 
   .wavvy-admin-topbar {
@@ -780,6 +931,17 @@ body {
   .wavvy-song-card:hover {
     transform: none;
   }
+}
+
+/* Never allow accidental horizontal scroll */
+.wavvy-main,
+.wavvy-page,
+.wavvy-page-narrow,
+.wavvy-page-form,
+.wavvy-player,
+.wavvy-fullscreen,
+.wavvy-fullscreen-panel {
+  overflow-x: hidden;
 }
 
 /* Mobile: compact list rows (Spotify-style) */
@@ -839,7 +1001,7 @@ body {
 
 @media (max-width: 480px) {
   :root {
-    --wavvy-player-height: 120px;
+    --wavvy-player-height: 140px;
   }
 
   .wavvy-mood-grid {

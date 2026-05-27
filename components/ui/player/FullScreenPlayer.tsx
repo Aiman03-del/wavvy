@@ -2,33 +2,16 @@
 
 import { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
-import { ChevronDown, SkipBack, SkipForward } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useMusicStore } from '@/store/musicStore'
-
-function formatTime(seconds: number) {
-  if (!seconds || isNaN(seconds)) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+import PlayerControls from '@/components/ui/player/PlayerControls'
 
 export default function FullScreenPlayer() {
   const overlayRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const {
-    currentSong,
-    isFullScreen,
-    isPlaying,
-    volume,
-    progress,
-    duration,
-    toggleFullScreen,
-    togglePlay,
-    nextSong,
-    prevSong,
-    setVolume,
-  } = useMusicStore()
+  const { currentSong, isFullScreen, isPlaying, toggleFullScreen } =
+    useMusicStore()
 
   useEffect(() => {
     if (!isFullScreen) return
@@ -71,16 +54,6 @@ export default function FullScreenPlayer() {
     currentSong.thumbnail_url ||
     `https://img.youtube.com/vi/${currentSong.youtube_id}/maxresdefault.jpg`
 
-  const progressPercent = duration > 0 ? (progress / duration) * 100 : 0
-
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const pct = x / rect.width
-    const seekTo = pct * duration
-    ;(window as Window & { wavvySeek?: (s: number) => void }).wavvySeek?.(seekTo)
-  }
-
   return (
     <div
       ref={overlayRef}
@@ -104,7 +77,9 @@ export default function FullScreenPlayer() {
           <ChevronDown size={28} />
         </button>
 
-        <div className="wavvy-fullscreen-art-wrap">
+        <div
+          className={`wavvy-fullscreen-art-wrap${isPlaying ? ' is-playing' : ''}`}
+        >
           <img
             className="wavvy-fullscreen-art"
             src={thumb}
@@ -126,52 +101,7 @@ export default function FullScreenPlayer() {
           )}
         </div>
 
-        <div className="wavvy-fullscreen-progress">
-          <span className="wavvy-fullscreen-time">{formatTime(progress)}</span>
-          <div
-            className="wavvy-fullscreen-progress-bar"
-            onClick={handleSeek}
-            role="slider"
-            aria-valuemin={0}
-            aria-valuemax={duration}
-            aria-valuenow={progress}
-          >
-            <div
-              className="wavvy-fullscreen-progress-fill"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <span className="wavvy-fullscreen-time">{formatTime(duration)}</span>
-        </div>
-
-        <div className="wavvy-fullscreen-controls">
-          <button type="button" className="wavvy-fullscreen-btn" onClick={prevSong} aria-label="Previous">
-            <SkipBack size={28} />
-          </button>
-          <button
-            type="button"
-            className="wavvy-fullscreen-play"
-            onClick={togglePlay}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? '⏸' : '▶'}
-          </button>
-          <button type="button" className="wavvy-fullscreen-btn" onClick={nextSong} aria-label="Next">
-            <SkipForward size={28} />
-          </button>
-        </div>
-
-        <div className="wavvy-fullscreen-volume">
-          <span aria-hidden>{volume === 0 ? '🔇' : volume < 50 ? '🔉' : '🔊'}</span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            aria-label="Volume"
-          />
-        </div>
+        <PlayerControls variant="fullscreen" />
       </div>
     </div>
   )

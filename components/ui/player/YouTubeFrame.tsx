@@ -7,7 +7,6 @@ declare global {
   interface Window {
     YT: any
     onYouTubeIframeAPIReady: () => void
-    wavvySeek: (seconds: number) => void
   }
 }
 

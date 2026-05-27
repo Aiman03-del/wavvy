@@ -2,47 +2,27 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
+import { Maximize2 } from 'lucide-react'
 import { useMusicStore } from '@/store/musicStore'
 import AudioPlayer from '@/components/player/AudioPlayer'
 import FullScreenPlayer from '@/components/ui/player/FullScreenPlayer'
-
-function formatTime(seconds: number) {
-  if (!seconds || isNaN(seconds)) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+import PlayerControls from '@/components/ui/player/PlayerControls'
 
 export default function MusicPlayer() {
-  const {
-    currentSong, isPlaying, volume, progress, duration,
-    togglePlay, nextSong, prevSong, setVolume, toggleFullScreen,
-  } = useMusicStore()
-
+  const { currentSong, toggleFullScreen } = useMusicStore()
   const barRef = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(false)
 
   useEffect(() => {
     if (currentSong && !shown) {
       setShown(true)
-      gsap.fromTo(barRef.current,
+      gsap.fromTo(
+        barRef.current,
         { y: 80, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }
       )
     }
-  }, [currentSong])
-
-  if (!currentSong) return <AudioPlayer />
-
-  const progressPercent = duration > 0 ? (progress / duration) * 100 : 0
-
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const pct = x / rect.width
-    const seekTo = pct * duration
-    ;(window as any).wavvySeek?.(seekTo)
-  }
+  }, [currentSong, shown])
 
   const openFullScreen = () => {
     const { isFullScreen } = useMusicStore.getState()
@@ -53,115 +33,45 @@ export default function MusicPlayer() {
     <>
       <AudioPlayer />
       <FullScreenPlayer />
-      <div
-        ref={barRef}
-        className="wavvy-player"
-      >
-        {/* Song Info — tap to expand */}
-        <div
-          className="wavvy-player-info"
-          onClick={openFullScreen}
-          onKeyDown={(e) => e.key === 'Enter' && openFullScreen()}
-          role="button"
-          tabIndex={0}
-          aria-label="Expand player"
-        >
-          <img
-            src={currentSong.thumbnail_url || `https://img.youtube.com/vi/${currentSong.youtube_id}/mqdefault.jpg`}
-            alt={currentSong.title}
-            style={{
-              width: '52px', height: '52px',
-              borderRadius: '0.5rem', objectFit: 'cover', flexShrink: 0,
-            }}
-          />
-          <div style={{ overflow: 'hidden' }}>
-            <p style={{
-              fontWeight: 600, fontSize: '0.9rem',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              color: '#F1F5F9',
-            }}>{currentSong.title}</p>
-            <p style={{
-              color: '#94A3B8', fontSize: '0.78rem',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{currentSong.artist}</p>
-          </div>
-        </div>
 
-        {/* Controls */}
-        <div className="wavvy-player-controls">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <button onClick={prevSong} style={btnStyle}>⏮</button>
-            <button
-              onClick={togglePlay}
-              style={{
-                width: '42px', height: '42px',
-                borderRadius: '50%',
-                background: '#3B82F6',
-                border: 'none', cursor: 'pointer',
-                fontSize: '1rem', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s',
-              }}
-            >
-              {isPlaying ? '⏸' : '▶'}
-            </button>
-            <button onClick={nextSong} style={btnStyle}>⏭</button>
-          </div>
-
-          {/* Progress */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '480px' }}>
-            <span style={{ color: '#475569', fontSize: '0.72rem', flexShrink: 0 }}>
-              {formatTime(progress)}
-            </span>
-            <div
-              onClick={handleSeek}
-              style={{
-                flex: 1, height: '4px',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '999px', cursor: 'pointer', position: 'relative',
-              }}
-            >
-              <div style={{
-                width: `${progressPercent}%`,
-                height: '100%',
-                background: '#3B82F6',
-                borderRadius: '999px',
-                transition: 'width 0.5s linear',
-              }} />
+      {currentSong && (
+        <div ref={barRef} className="wavvy-player">
+          <div
+            className="wavvy-player-top"
+            onClick={openFullScreen}
+            onKeyDown={(e) => e.key === 'Enter' && openFullScreen()}
+            role="button"
+            tabIndex={0}
+            aria-label="Expand player"
+          >
+            <img
+              className="wavvy-player-thumb"
+              src={
+                currentSong.thumbnail_url ||
+                `https://img.youtube.com/vi/${currentSong.youtube_id}/mqdefault.jpg`
+              }
+              alt=""
+            />
+            <div className="wavvy-player-meta">
+              <p className="wavvy-player-title">{currentSong.title}</p>
+              <p className="wavvy-player-artist">{currentSong.artist}</p>
             </div>
-            <span style={{ color: '#475569', fontSize: '0.72rem', flexShrink: 0 }}>
-              {formatTime(duration)}
-            </span>
+            <button
+              type="button"
+              className="wavvy-player-expand"
+              onClick={(e) => {
+                e.stopPropagation()
+                openFullScreen()
+              }}
+              aria-label="Full screen player"
+            >
+              <Maximize2 size={18} />
+            </button>
           </div>
-        </div>
 
-        {/* Volume */}
-        <div className="wavvy-player-volume">
-          <span style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
-            {volume === 0 ? '🔇' : volume < 50 ? '🔉' : '🔊'}
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            style={{
-              width: '90px', accentColor: '#3B82F6', cursor: 'pointer',
-            }}
-          />
+          <PlayerControls variant="bar" />
         </div>
-      </div>
+      )}
     </>
   )
-}
-
-const btnStyle: React.CSSProperties = {
-  background: 'transparent',
-  border: 'none',
-  color: '#94A3B8',
-  fontSize: '1.1rem',
-  cursor: 'pointer',
-  padding: '0.25rem',
-  transition: 'color 0.2s',
 }
