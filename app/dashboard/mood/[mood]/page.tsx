@@ -92,7 +92,11 @@ export default function MoodPage() {
       </div>
 
       {loading ? (
-        <div style={{ color: '#94A3B8' }}>Loading songs...</div>
+        <div className="wavvy-song-grid">
+          {Array(6).fill(0).map((_, i) => (
+            <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
+          ))}
+        </div>
       ) : songs.length === 0 ? (
         <div style={{ background: '#16161F', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '1.25rem', padding: '3rem', textAlign: 'center' }}>
           <Music2 size={36} color={meta.color} />

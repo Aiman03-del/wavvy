@@ -7,7 +7,6 @@ import { gsap } from 'gsap'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import WavvyLogo from '@/components/ui/WavvyLogo'
-import WavvyLoader from '@/components/ui/WavvyLoader'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -197,7 +196,7 @@ export default function LoginPage() {
           )}
 
           <button type="submit" className="auth-btn" disabled={loading}>
-            {loading ? <WavvyLoader size={18} /> : 'Sign In'}
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 

@@ -1,5 +1,3 @@
-import WavvyLoader from '@/components/ui/WavvyLoader'
-
 export default function Loading() {
-  return <WavvyLoader fullScreen size={96} />
+  return <div style={{ minHeight: '100vh', background: '#0A0A0F' }} />
 }

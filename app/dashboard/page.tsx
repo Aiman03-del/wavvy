@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { Music2 } from 'lucide-react'
 import SongGrid from '@/components/ui/SongGrid'
-import WavvyLoader from '@/components/ui/WavvyLoader'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import type { Profile, Song } from '@/types'
@@ -66,7 +65,7 @@ export default function DashboardPage() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   if (loading) {
-    return <WavvyLoader fullScreen size={96} />
+    return <DashboardLoadingSkeleton />
   }
 
   return (
@@ -96,6 +95,19 @@ export default function DashboardPage() {
           <SongGrid songs={songs} onPlay={handlePlay} />
         )}
       </section>
+    </div>
+  )
+}
+
+function DashboardLoadingSkeleton() {
+  return (
+    <div className="wavvy-page">
+      <div className="wavvy-skeleton wavvy-skeleton-title" />
+      <div className="wavvy-song-grid">
+        {Array(6).fill(0).map((_, index) => (
+          <div key={index} className="wavvy-skeleton wavvy-skeleton-card" />
+        ))}
+      </div>
     </div>
   )
 }

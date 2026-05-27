@@ -7,7 +7,6 @@ import { gsap } from 'gsap'
 import { Eye, EyeOff, Music2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import WavvyLogo from '@/components/ui/WavvyLogo'
-import WavvyLoader from '@/components/ui/WavvyLoader'
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wavvy-five.vercel.app'
 
@@ -255,7 +254,7 @@ export default function RegisterPage() {
             )}
 
             <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? <WavvyLoader size={18} /> : 'Create Free Account'}
+              {loading ? 'Creating account...' : 'Create Free Account'}
             </button>
           </form>
         )}

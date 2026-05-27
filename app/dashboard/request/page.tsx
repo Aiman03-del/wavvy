@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { CheckCircle2, Clock, Send, Target, XCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import WavvyLoader from '@/components/ui/WavvyLoader'
 
 interface Request {
   id: string
@@ -33,7 +32,13 @@ export default function RequestPage() {
     setLoading(false)
   }
 
-  useEffect(() => { loadRequests() }, [])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadRequests()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleSubmit = async () => {
     if (!form.youtube_url.trim()) return
@@ -108,7 +113,7 @@ export default function RequestPage() {
           display: 'flex', alignItems: 'center', gap: '0.6rem',
         }}><Target size={24} /> Request a Song</h1>
         <p style={{ color: '#94A3B8', marginTop: '0.25rem', fontSize: '0.9rem' }}>
-          Paste a YouTube link and we'll review it from there.
+          Paste a YouTube link and we&apos;ll review it from there.
         </p>
       </div>
 
@@ -183,7 +188,7 @@ export default function RequestPage() {
               gap: '0.5rem',
             }}
           >
-              {submitting ? <WavvyLoader size={18} /> : <Send size={16} />}
+              <Send size={16} />
               {submitting ? 'Submitting...' : 'Submit Request'}
           </button>
         </div>
@@ -196,8 +201,10 @@ export default function RequestPage() {
         </h2>
 
         {loading ? (
-          <div style={{ padding: '2.5rem 0' }}>
-            <WavvyLoader fullScreen={false} size={72} />
+          <div className="wavvy-song-grid">
+            {Array(3).fill(0).map((_,i) => (
+              <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
+            ))}
           </div>
         ) : myRequests.length === 0 ? (
           <div style={{

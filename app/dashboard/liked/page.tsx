@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Heart, Music2 } from 'lucide-react'
 import SongGrid from '@/components/ui/SongGrid'
-import WavvyLoader from '@/components/ui/WavvyLoader'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import type { Song } from '@/types'
@@ -31,7 +30,7 @@ export default function LikedPage() {
         .order('created_at', { ascending: false })
 
       const likedSongs =
-        (data?.map((row: { song: any }) => row.song as Song).filter(Boolean) as Song[]) || []
+        (data?.map((row: { song: Song | Song[] | null }) => (Array.isArray(row.song) ? row.song[0] : row.song)).filter((song): song is Song => Boolean(song)) || [])
       setSongs(likedSongs)
       setLoading(false)
     }
@@ -64,8 +63,12 @@ export default function LikedPage() {
       </div>
 
       {loading && (
-        <div style={{ padding: '3rem 0' }}>
-          <WavvyLoader fullScreen={false} size={72} />
+        <div className="wavvy-song-grid">
+          {Array(6)
+            .fill(0)
+            .map((_, i) => (
+              <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
+            ))}
         </div>
       )}
 

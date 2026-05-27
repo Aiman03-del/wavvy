@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/ui/Sidebar'
 import MusicPlayer from '@/components/ui/player/MusicPlayer'
 import { Toaster } from '@/components/ui/sonner'
-import WavvyLoader from '@/components/ui/WavvyLoader'
 import type { Profile } from '@/types'
 
 export default function DashboardLayout({
@@ -37,7 +36,17 @@ export default function DashboardLayout({
   }, [router])
 
   if (loading) {
-    return <WavvyLoader fullScreen size={96} />
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0A0A0F',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div className="wavvy-skeleton wavvy-skeleton-title" style={{ width: '260px' }} />
+      </div>
+    )
   }
 
   return (
