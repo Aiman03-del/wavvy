@@ -1156,12 +1156,16 @@ function splitYouTubeTitle(rawTitle: string) {
   const parts = cleanedTitle.split(/\s[-|•:]\s/)
 
   if (parts.length >= 2) {
-    const first = parts[0].trim()
-    const second = parts.slice(1).join(' - ').trim()
+    const first = cleanTitlePart(parts[0])
+    const second = cleanTitlePart(parts.slice(1).join(' - '))
+    const firstLooksArtist = looksLikeArtistName(first)
+    const secondLooksArtist = looksLikeArtistName(second)
+
+    const useSwapped = !firstLooksArtist && secondLooksArtist
 
     return {
-      title: second || cleanedTitle,
-      artist: first,
+      title: (useSwapped ? first : second) || cleanedTitle,
+      artist: useSwapped ? second : first,
       album: inferAlbumFromTitle(rawTitle),
     }
   }
@@ -1245,6 +1249,25 @@ function normalizeTitle(value: string) {
     .replace(/\s*[\|•]\s*/g, ' | ')
     .replace(/\s*[-–—]\s*/g, ' - ')
     .trim()
+}
+
+function cleanTitlePart(value: string) {
+  return normalizeTitle(value)
+    .replace(/\[[^\]]*]/g, ' ')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(official\s*(video|audio)|music\s*video|lyrics?|lyric\s*video|audio|video|hd|4k|mv|visualizer|performance|live)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function looksLikeArtistName(value: string) {
+  if (!value) return false
+  const words = value.split(/\s+/).filter(Boolean)
+  if (words.length === 0) return false
+  if (words.length > 5) return false
+  if (value.length > 42) return false
+  if (/[!?]/.test(value)) return false
+  return true
 }
 
 function normalizeTextForInference(value: string) {

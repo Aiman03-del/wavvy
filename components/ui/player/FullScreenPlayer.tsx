@@ -7,11 +7,9 @@ import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import PlayerControls from '@/components/ui/player/PlayerControls'
 import {
-  hasNonLatin,
   parseLrc,
   pickActivePlainLyricIndex,
   pickActiveLrcIndex,
-  romanizeToEnglishLetters,
   splitPlainLyricsToLines,
 } from '@/lib/lyrics'
 
@@ -120,14 +118,9 @@ export default function FullScreenPlayer() {
     [lrcLines, progress]
   )
 
-  const romanizedLyrics = useMemo(() => {
-    if (!rawLyrics) return ''
-    return hasNonLatin(rawLyrics) ? romanizeToEnglishLetters(rawLyrics) : rawLyrics
-  }, [rawLyrics])
-
   const plainLyricsLines = useMemo(
-    () => splitPlainLyricsToLines(romanizedLyrics),
-    [romanizedLyrics]
+    () => splitPlainLyricsToLines(rawLyrics),
+    [rawLyrics]
   )
 
   const activePlainIndex = useMemo(
@@ -140,10 +133,9 @@ export default function FullScreenPlayer() {
     [duration, plainLyricsLines.length, progress]
   )
 
-  const renderedLyricLines = lrcLines.length > 0 ? lrcLines.map((line) => {
-    const text = hasNonLatin(line.text) ? romanizeToEnglishLetters(line.text) : line.text
-    return text || '...'
-  }) : plainLyricsLines
+  const renderedLyricLines = lrcLines.length > 0
+    ? lrcLines.map((line) => line.text || '...')
+    : plainLyricsLines
 
   const activeLyricIndex = lrcLines.length > 0 ? activeLrcIndex : activePlainIndex
 
