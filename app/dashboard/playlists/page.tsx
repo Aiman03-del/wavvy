@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ListMusic, Music2, Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ListMusic, Music2, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Song } from '@/types'
 
@@ -14,10 +15,12 @@ interface PlaylistRow {
 }
 
 export default function PlaylistsPage() {
+  const router = useRouter()
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [deletingPlaylistId, setDeletingPlaylistId] = useState<string | null>(null)
 
   const loadPlaylists = async () => {
     const {
@@ -66,6 +69,22 @@ export default function PlaylistsPage() {
     setCreating(false)
     if (!error) {
       setNewName('')
+      await loadPlaylists()
+    }
+  }
+
+  const deletePlaylist = async (playlistId: string) => {
+    const confirmed = window.confirm('Delete this playlist? This cannot be undone.')
+    if (!confirmed) return
+
+    setDeletingPlaylistId(playlistId)
+
+    await supabase.from('playlist_songs').delete().eq('playlist_id', playlistId)
+    const { error } = await supabase.from('playlists').delete().eq('id', playlistId)
+
+    setDeletingPlaylistId(null)
+
+    if (!error) {
       await loadPlaylists()
     }
   }
@@ -169,13 +188,48 @@ export default function PlaylistsPage() {
             return (
               <div
                 key={playlist.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/dashboard/playlists/${playlist.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    router.push(`/dashboard/playlists/${playlist.id}`)
+                  }
+                }}
                 style={{
                   background: '#16161F',
                   border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '1rem',
                   padding: '0.9rem 1rem',
+                  cursor: 'pointer',
+                  position: 'relative',
                 }}
               >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void deletePlaylist(playlist.id)
+                  }}
+                  disabled={deletingPlaylistId === playlist.id}
+                  style={{
+                    position: 'absolute',
+                    top: '0.85rem',
+                    right: '0.85rem',
+                    border: '1px solid rgba(248,113,113,0.22)',
+                    borderRadius: '999px',
+                    background: 'rgba(248,113,113,0.08)',
+                    color: '#F87171',
+                    padding: '0.35rem 0.55rem',
+                    cursor: deletingPlaylistId === playlist.id ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                  }}
+                  aria-label="Delete playlist"
+                >
+                  <Trash2 size={14} />
+                </button>
                 <p style={{ margin: 0, color: '#F1F5F9', fontWeight: 600 }}>{playlist.name}</p>
                 <p style={{ margin: '0.2rem 0 0', color: '#94A3B8', fontSize: '0.82rem' }}>
                   {songs.length} song{songs.length === 1 ? '' : 's'}
@@ -194,6 +248,9 @@ export default function PlaylistsPage() {
                     {songs.slice(0, 3).map((song) => song.title).join(' • ')}
                   </p>
                 )}
+                <p style={{ margin: '0.55rem 0 0', color: '#60A5FA', fontSize: '0.8rem', fontWeight: 600 }}>
+                  Open playlist
+                </p>
               </div>
             )
           })}

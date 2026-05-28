@@ -211,7 +211,8 @@ Song cards across the dashboard, search, liked songs, mood pages, and recent sec
 - Supabase handles authentication and database access.
 - Zustand stores player state: current song, queue, history, shuffle, repeat, volume, progress, and fullscreen mode.
 - Local storage persists the last session playback state.
-- The app uses these key data tables: `recently_played`, `liked_songs`, `playlists`, `playlist_songs`, `song_requests`, `profiles`, and `songs`.
+- The app uses these key data tables: `recently_played`, `liked_songs`, `playlists`, `playlist_songs`, `song_requests`, `profiles`, `artist_profiles`, and `songs`.
+- Artist profile images are stored in the public Supabase Storage bucket `artist-images`.
 
 ## Route Guarding
 

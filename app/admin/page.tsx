@@ -12,6 +12,7 @@ import {
   PartyPopper,
   Pencil,
   Plus,
+  Sparkles,
   Smile,
   Target,
   Trash2,
@@ -23,13 +24,14 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import type { Song, Profile } from '@/types'
+import type { ArtistProfile, Song, Profile } from '@/types'
 
-type Tab = 'songs' | 'requests' | 'users'
+type Tab = 'songs' | 'requests' | 'artists' | 'users'
 
 const TAB_ICONS = {
   songs: Music2,
   requests: Target,
+  artists: UserRound,
   users: Users,
 } as const
 
@@ -78,13 +80,27 @@ export default function AdminPage() {
   const [requests, setRequests] = useState<SongRequest[]>([])
   const [requestFilter, setRequestFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending')
 
+  // Artists state
+  const [artists, setArtists] = useState<ArtistProfile[]>([])
+  const [showArtistForm, setShowArtistForm] = useState(false)
+  const [editingArtist, setEditingArtist] = useState<ArtistProfile | null>(null)
+  const [artistForm, setArtistForm] = useState({
+    name: '',
+    bio: '',
+    genre: '',
+    image_url: '',
+  })
+  const [savingArtist, setSavingArtist] = useState(false)
+  const [uploadingArtistImage, setUploadingArtistImage] = useState(false)
+  const [generatingArtist, setGeneratingArtist] = useState(false)
+
   // Users state
   const [users, setUsers] = useState<Profile[]>([])
   const [pendingDeleteSongId, setPendingDeleteSongId] = useState<string | null>(null)
   const [pendingRoleUser, setPendingRoleUser] = useState<Profile | null>(null)
 
   // Stats
-  const [stats, setStats] = useState({ songs: 0, users: 0, requests: 0, pending: 0 })
+  const [stats, setStats] = useState({ songs: 0, users: 0, requests: 0, pending: 0, artists: 0 })
 
   // Auth check
   useEffect(() => {
@@ -104,25 +120,56 @@ export default function AdminPage() {
       { data: songsData },
       { data: reqData },
       { data: usersData },
+      { data: artistData, error: artistError },
     ] = await Promise.all([
       supabase.from('songs').select('*').order('created_at', { ascending: false }),
       supabase.from('song_requests').select('*, profiles(username, email)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabase.from('artist_profiles').select('*').order('created_at', { ascending: false }),
     ])
+
+    const existingArtists = new Set(
+      (artistData || []).map((artist: ArtistProfile) => artist.name.trim().toLowerCase())
+    )
+    const missingArtistNames = Array.from(
+      new Set(
+        (songsData || [])
+          .flatMap((song: Song) => splitArtistNames(song.artist))
+          .filter(Boolean)
+      )
+    ).filter(name => !existingArtists.has(name.toLowerCase()))
+
+    let syncedArtists: ArtistProfile[] = []
+    if (missingArtistNames.length > 0 && !artistError) {
+      const { data: createdArtists } = await supabase
+        .from('artist_profiles')
+        .insert(missingArtistNames.map(name => ({ name })))
+        .select('*')
+
+      syncedArtists = createdArtists || []
+    }
+
+    const mergedArtists = [...(artistData || []), ...syncedArtists]
 
     setSongs(songsData || [])
     setRequests(reqData || [])
     setUsers(usersData || [])
+    setArtists(artistError ? [] : mergedArtists)
     setStats({
       songs: songsData?.length || 0,
       users: usersData?.length || 0,
       requests: reqData?.length || 0,
       pending: reqData?.filter((request: SongRequest) => request.status === 'pending').length || 0,
+      artists: artistError ? 0 : mergedArtists.length,
     })
   }, [])
 
   useEffect(() => {
-    if (authorized) loadAll()
+    if (authorized) {
+      queueMicrotask(() => {
+        void loadAll()
+      })
+    }
   }, [authorized, loadAll])
 
   useEffect(() => {
@@ -341,6 +388,135 @@ export default function AdminPage() {
     }
   }
 
+  // ─── Artist CRUD ─────────────────────────────────────
+
+  const openAddArtist = () => {
+    setEditingArtist(null)
+    setArtistForm({
+      name: '',
+      bio: '',
+      genre: '',
+      image_url: '',
+    })
+    setShowArtistForm(true)
+    setTab('artists')
+  }
+
+  const openEditArtist = (artist: ArtistProfile) => {
+    setEditingArtist(artist)
+    setArtistForm({
+      name: artist.name || '',
+      bio: artist.bio || '',
+      genre: artist.genre || '',
+      image_url: artist.image_url || '',
+    })
+    setShowArtistForm(true)
+    setTab('artists')
+  }
+
+  const generateArtistProfile = async () => {
+    const name = artistForm.name.trim() || editingArtist?.name?.trim() || ''
+    if (!name) {
+      toast.error('Please enter an artist name first')
+      return
+    }
+
+    setGeneratingArtist(true)
+    try {
+      const response = await fetch('/api/artists/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          bio: artistForm.bio,
+          genre: artistForm.genre,
+          image_url: artistForm.image_url,
+        }),
+      })
+
+      const data = await response.json() as {
+        name?: string
+        bio?: string
+        genre?: string
+        image_url?: string
+        error?: string
+      }
+
+      if (!response.ok) {
+        toast.error(data.error || 'Failed to generate artist profile')
+        return
+      }
+
+      setArtistForm((current) => ({
+        ...current,
+        name: data.name || current.name,
+        bio: data.bio || current.bio,
+        genre: data.genre || current.genre,
+        image_url: data.image_url || current.image_url,
+      }))
+
+      toast.success('Artist profile generated')
+    } finally {
+      setGeneratingArtist(false)
+    }
+  }
+
+  const uploadArtistImage = async (file: File) => {
+    setUploadingArtistImage(true)
+    try {
+      const extension = file.name.split('.').pop() || 'jpg'
+      const filePath = `artists/${crypto.randomUUID()}.${extension}`
+      const { error: uploadError } = await supabase.storage
+        .from('artist-images')
+        .upload(filePath, file, {
+          upsert: true,
+          cacheControl: '3600',
+          contentType: file.type,
+        })
+
+      if (uploadError) {
+        toast.error(uploadError.message || 'Failed to upload artist image')
+        return
+      }
+
+      const { data } = supabase.storage.from('artist-images').getPublicUrl(filePath)
+      setArtistForm(current => ({ ...current, image_url: data.publicUrl }))
+      toast.success('Artist image uploaded')
+    } finally {
+      setUploadingArtistImage(false)
+    }
+  }
+
+  const saveArtist = async () => {
+    if (!artistForm.name.trim()) return
+    setSavingArtist(true)
+
+    try {
+      const payload = {
+        name: artistForm.name.trim(),
+        bio: artistForm.bio.trim() || null,
+        genre: artistForm.genre.trim() || null,
+        image_url: artistForm.image_url.trim() || null,
+      }
+
+      const { error } = editingArtist
+        ? await supabase.from('artist_profiles').update(payload).eq('id', editingArtist.id)
+        : await supabase.from('artist_profiles').insert(payload)
+
+      if (error) {
+        toast.error(error.message || 'Failed to save artist profile')
+        return
+      }
+
+      toast.success(editingArtist ? 'Artist profile updated' : 'Artist profile created')
+      setShowArtistForm(false)
+      setEditingArtist(null)
+      loadAll()
+    } finally {
+      setSavingArtist(false)
+    }
+  }
+
   const deleteSong = async (id: string) => {
     setPendingDeleteSongId(id)
   }
@@ -444,7 +620,7 @@ export default function AdminPage() {
         }}><Crown size={18} /> Admin Panel</span>
 
         <div className="wavvy-admin-tabs">
-          {(['songs', 'requests', 'users'] as Tab[]).map(t => (
+          {(['songs', 'requests', 'artists', 'users'] as Tab[]).map(t => (
             <button
               key={t}
               className="tab-btn"
@@ -465,7 +641,13 @@ export default function AdminPage() {
                   const TabIcon = TAB_ICONS[t]
                   return <TabIcon size={14} />
                 })()}
-                {t === 'songs' ? 'Songs' : t === 'requests' ? `Requests${stats.pending > 0 ? ` (${stats.pending})` : ''}` : 'Users'}
+                {t === 'songs'
+                  ? 'Songs'
+                  : t === 'requests'
+                    ? `Requests${stats.pending > 0 ? ` (${stats.pending})` : ''}`
+                    : t === 'artists'
+                      ? `Artists${stats.artists > 0 ? ` (${stats.artists})` : ''}`
+                      : 'Users'}
               </span>
             </button>
           ))}
@@ -479,6 +661,7 @@ export default function AdminPage() {
           {[
             { label: 'Total Songs', value: stats.songs, icon: Music2, color: '#3B82F6' },
             { label: 'Total Users', value: stats.users, icon: Users, color: '#10B981' },
+            { label: 'Artists', value: stats.artists, icon: UserRound, color: '#8B5CF6' },
             { label: 'Requests', value: stats.requests, icon: Target, color: '#F59E0B' },
             { label: 'Pending', value: stats.pending, icon: Clock3, color: '#EF4444' },
           ].map(stat => (
@@ -672,7 +855,7 @@ export default function AdminPage() {
                       <p style={{ color: '#94A3B8', fontSize: '0.82rem', wordBreak: 'break-all' }}>{req.youtube_url}</p>
                       {req.notes && (
                         <p style={{ color: '#475569', fontSize: '0.78rem', marginTop: '0.35rem', fontStyle: 'italic' }}>
-                          "{req.notes}"
+                          &quot;{req.notes}&quot;
                         </p>
                       )}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
@@ -754,6 +937,103 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── ARTISTS TAB ───────────────────────────── */}
+        {tab === 'artists' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.05rem' }}>
+                Artist Profiles ({artists.length})
+              </h2>
+              <button
+                onClick={openAddArtist}
+                style={{
+                  padding: '0.6rem 1.25rem',
+                  background: '#8B5CF6', border: 'none',
+                  borderRadius: '0.75rem', color: '#fff',
+                  fontWeight: 600, fontSize: '0.88rem',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                }}
+              >+ Add Artist</button>
+            </div>
+
+            <div className="wavvy-table-scroll" style={{
+              background: '#16161F',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: '1.25rem',
+            }}>
+              <div className="wavvy-table-inner">
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '56px 1.1fr 1.6fr 140px 120px 90px',
+                  padding: '0.65rem 1rem',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  {['', 'Artist', 'Bio', 'Genre', 'Updated', 'Actions'].map(h => (
+                    <span key={h} style={{ color: '#475569', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+
+                {artists.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: '#475569' }}>
+                    No artist profiles yet. Add your first artist.
+                  </div>
+                ) : artists.map((artist, idx) => (
+                  <div
+                    key={artist.id}
+                    className="row-hover"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '56px 1.1fr 1.6fr 140px 120px 90px',
+                      padding: '0.7rem 1rem',
+                      alignItems: 'center',
+                      borderBottom: idx < artists.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                    }}
+                  >
+                    <img
+                      src={artist.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(artist.name)}&background=8B5CF6&color=fff`}
+                      alt={artist.name}
+                      style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                    <div style={{ overflow: 'hidden', paddingRight: '0.5rem' }}>
+                      <p style={{ fontWeight: 600, fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {artist.name}
+                      </p>
+                      <p style={{ color: '#475569', fontSize: '0.74rem' }}>
+                        Artist profile
+                      </p>
+                    </div>
+                    <span style={{ color: '#94A3B8', fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {artist.bio || '—'}
+                    </span>
+                    <span style={{ color: '#94A3B8', fontSize: '0.8rem' }}>{artist.genre || '—'}</span>
+                    <span style={{ color: '#475569', fontSize: '0.78rem' }}>
+                      {artist.updated_at ? new Date(artist.updated_at).toLocaleDateString() : '—'}
+                    </span>
+                    <button
+                      className="icon-btn"
+                      onClick={() => openEditArtist(artist)}
+                      style={{
+                        padding: '0.3rem 0.65rem',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.75rem', fontWeight: 600,
+                        color: '#A78BFA',
+                        border: '1px solid rgba(168,85,247,0.25)',
+                        background: 'rgba(168,85,247,0.08)',
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Pencil size={12} /> Edit
+                      </span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1030,6 +1310,179 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── ADD/EDIT ARTIST MODAL ───────────────────── */}
+      {showArtistForm && (
+        <div
+          onClick={() => setShowArtistForm(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            className="modal-anim"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#16161F',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '1.5rem',
+              padding: '1.75rem',
+              width: '100%', maxWidth: '560px',
+              maxHeight: '90vh', overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.15rem' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                  {editingArtist ? <Pencil size={16} /> : <Plus size={16} />}
+                  {editingArtist ? 'Edit Artist Profile' : 'Add Artist Profile'}
+                </span>
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <button
+                  type="button"
+                  onClick={generateArtistProfile}
+                  disabled={generatingArtist}
+                  title="AI generate"
+                  aria-label="AI generate artist profile"
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    border: '1px solid rgba(139,92,246,0.28)',
+                    background: 'rgba(139,92,246,0.12)',
+                    color: '#A78BFA',
+                    display: 'grid',
+                    placeItems: 'center',
+                    cursor: generatingArtist ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <Sparkles size={16} />
+                </button>
+                <button
+                  onClick={() => setShowArtistForm(false)}
+                  style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.1rem' }}
+                ><X size={16} /></button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={labelStyle}>Artist Name <span style={{ color: '#EF4444' }}>*</span></label>
+                <input
+                  className="admin-input"
+                  type="text"
+                  placeholder="Artist name"
+                  value={artistForm.name}
+                  onChange={e => setArtistForm(p => ({ ...p, name: e.target.value }))}
+                  style={inputStyle}
+                />
+                {generatingArtist && (
+                  <p style={{ color: '#94A3B8', fontSize: '0.78rem', marginTop: '0.45rem' }}>
+                    Generating artist details...
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label style={labelStyle}>Genre <span style={{ color: '#475569', fontWeight: 400 }}>(optional)</span></label>
+                <input
+                  className="admin-input"
+                  type="text"
+                  placeholder="Pop, Rock, Hip-Hop..."
+                  value={artistForm.genre}
+                  onChange={e => setArtistForm(p => ({ ...p, genre: e.target.value }))}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Bio <span style={{ color: '#475569', fontWeight: 400 }}>(optional)</span></label>
+                <textarea
+                  className="admin-input"
+                  placeholder="Short artist bio"
+                  value={artistForm.bio}
+                  onChange={e => setArtistForm(p => ({ ...p, bio: e.target.value }))}
+                  style={{ ...inputStyle, minHeight: '120px', resize: 'vertical', lineHeight: 1.5 }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Profile Image Upload <span style={{ color: '#475569', fontWeight: 400 }}>(optional)</span></label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async e => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      await uploadArtistImage(file)
+                    }
+                    e.currentTarget.value = ''
+                  }}
+                  style={{ ...inputStyle, padding: '0.65rem 1rem', cursor: 'pointer' }}
+                />
+                {uploadingArtistImage && (
+                  <p style={{ color: '#94A3B8', fontSize: '0.78rem', marginTop: '0.45rem' }}>
+                    Uploading image...
+                  </p>
+                )}
+                {artistForm.image_url && (
+                  <img
+                    src={artistForm.image_url}
+                    alt={artistForm.name || 'Artist preview'}
+                    style={{ width: '100%', borderRadius: '0.85rem', marginTop: '0.75rem', maxHeight: '220px', objectFit: 'cover' }}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label style={labelStyle}>Image URL <span style={{ color: '#475569', fontWeight: 400 }}>(optional fallback)</span></label>
+                <input
+                  className="admin-input"
+                  type="url"
+                  placeholder="https://..."
+                  value={artistForm.image_url}
+                  onChange={e => setArtistForm(p => ({ ...p, image_url: e.target.value }))}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  onClick={() => setShowArtistForm(false)}
+                  style={{
+                    flex: 1, padding: '0.8rem',
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '0.85rem', color: '#94A3B8',
+                    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '0.9rem',
+                  }}
+                >Cancel</button>
+                <button
+                  onClick={saveArtist}
+                  disabled={savingArtist || !artistForm.name.trim()}
+                  style={{
+                    flex: 2, padding: '0.8rem',
+                    background: savingArtist || !artistForm.name.trim()
+                      ? 'rgba(139,92,246,0.3)' : '#8B5CF6',
+                    border: 'none', borderRadius: '0.85rem',
+                    color: '#fff', fontWeight: 600, fontSize: '0.9rem',
+                    cursor: savingArtist ? 'not-allowed' : 'pointer',
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  {savingArtist ? 'Saving...' : editingArtist ? 'Save Changes' : 'Create Artist'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(pendingDeleteSongId || pendingRoleUser) && (
         <div
           onClick={() => {
@@ -1268,6 +1721,13 @@ function looksLikeArtistName(value: string) {
   if (value.length > 42) return false
   if (/[!?]/.test(value)) return false
   return true
+}
+
+function splitArtistNames(value: string) {
+  return value
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
 }
 
 function normalizeTextForInference(value: string) {

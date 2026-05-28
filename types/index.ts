@@ -10,6 +10,16 @@ export interface Profile {
   created_at?: string
 }
 
+export interface ArtistProfile {
+  id: string
+  name: string
+  bio?: string | null
+  genre?: string | null
+  image_url?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Song {
   id: string
   title: string
