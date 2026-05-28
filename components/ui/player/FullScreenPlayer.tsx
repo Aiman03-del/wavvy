@@ -17,13 +17,13 @@ export default function FullScreenPlayer() {
   const overlayRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const lyricsScrollRef = useRef<HTMLDivElement>(null)
-  const swipeStartXRef = useRef<number | null>(null)
+  const lyricsLineRefs = useRef<Array<HTMLParagraphElement | null>>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [playlists, setPlaylists] = useState<Array<{ id: string; name: string }>>([])
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [likedSongIds, setLikedSongIds] = useState<string[]>([])
-  const [activeView, setActiveView] = useState<'player' | 'lyrics'>('player')
+  const [activeTab, setActiveTab] = useState<'player' | 'lyrics'>('player')
   const [resolvedLyrics, setResolvedLyrics] = useState('')
 
   const { currentSong, isFullScreen, isPlaying, toggleFullScreen, progress, duration } =
@@ -140,21 +140,26 @@ export default function FullScreenPlayer() {
   const activeLyricIndex = lrcLines.length > 0 ? activeLrcIndex : activePlainIndex
 
   useEffect(() => {
-    if (activeView !== 'lyrics') return
-    if (!lyricsScrollRef.current) return
-    if (activeLyricIndex < 0) return
-
-    const el = lyricsScrollRef.current.querySelector(
-      `[data-lyric-idx="${activeLyricIndex}"]`
-    ) as HTMLElement | null
-
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [activeLyricIndex, activeView])
+    setActiveTab('player')
+  }, [currentSong?.id])
 
   useEffect(() => {
-    if (!isFullScreen) return
-    setActiveView('player')
-  }, [currentSong?.id, isFullScreen])
+    if (activeTab !== 'lyrics' || activeLyricIndex < 0) return
+
+    const container = lyricsScrollRef.current
+    const activeLine = lyricsLineRefs.current[activeLyricIndex]
+    if (!container || !activeLine) return
+
+    const containerRect = container.getBoundingClientRect()
+    const lineRect = activeLine.getBoundingClientRect()
+    const offset =
+      lineRect.top - containerRect.top - container.clientHeight / 2 + lineRect.height / 2
+
+    container.scrollTo({
+      top: container.scrollTop + offset,
+      behavior: 'smooth',
+    })
+  }, [activeLyricIndex, activeTab, renderedLyricLines.length])
 
   useEffect(() => {
     if (!isFullScreen || !currentSong?.id) return
@@ -252,14 +257,15 @@ export default function FullScreenPlayer() {
   }
 
   const isCurrentLiked = likedSongIds.includes(currentSong.id)
-  // Track is 200% wide with two 50% pages, so second page starts at -50%.
-  const translatePercent = activeView === 'lyrics' ? -50 : 0
 
   return (
     <div
       ref={overlayRef}
       className="wavvy-fullscreen"
-      onClick={toggleFullScreen}
+      onClick={(e) => {
+        // Only close when clicking the backdrop itself, not child elements.
+        if (e.target === overlayRef.current) toggleFullScreen()
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Now playing"
@@ -269,123 +275,109 @@ export default function FullScreenPlayer() {
         className="wavvy-fullscreen-panel"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          className="wavvy-fullscreen-close"
-          onClick={toggleFullScreen}
-          aria-label="Minimize player"
-        >
-          <ChevronDown size={28} />
-        </button>
-
-        <div
-          className="wavvy-fullscreen-swiper"
-          onPointerDown={(e) => {
-            if (showPlaylistModal) return
-            swipeStartXRef.current = e.clientX
-          }}
-          onPointerUp={(e) => {
-            if (showPlaylistModal) return
-            if (swipeStartXRef.current === null) return
-            const deltaX = e.clientX - swipeStartXRef.current
-            swipeStartXRef.current = null
-            if (Math.abs(deltaX) < 45) return
-            if (deltaX < 0) setActiveView('lyrics')
-            if (deltaX > 0) setActiveView('player')
-          }}
-        >
-          <div
-            className="wavvy-fullscreen-swiper-track"
-            style={{ transform: `translateX(${translatePercent}%)` }}
+        <div className="wavvy-fullscreen-tabs" role="tablist" aria-label="Fullscreen player tabs">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'player'}
+            className={`wavvy-fullscreen-tab${activeTab === 'player' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('player')}
           >
-            <div className="wavvy-fullscreen-page wavvy-fullscreen-page--player">
-              <div
-                className={`wavvy-fullscreen-art-wrap${isPlaying ? ' is-playing' : ''}`}
-              >
-                <img
-                  className="wavvy-fullscreen-art"
-                  src={thumb}
-                  alt=""
-                  onError={(e) => {
-                    const img = e.currentTarget
-                    if (!img.src.includes('mqdefault')) {
-                      img.src = `https://img.youtube.com/vi/${currentSong.youtube_id}/mqdefault.jpg`
+            Player
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'lyrics'}
+            className={`wavvy-fullscreen-tab${activeTab === 'lyrics' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('lyrics')}
+          >
+            Lyrics
+          </button>
+        </div>
+
+        {activeTab === 'player' ? (
+          <div className="wavvy-fullscreen-player-view">
+            <div className="wavvy-fullscreen-grid">
+              <div className="wavvy-fullscreen-left">
+                <div className={`wavvy-fullscreen-art-wrap${isPlaying ? ' is-playing' : ''}`}>
+                  <img
+                    className="wavvy-fullscreen-art"
+                    src={thumb}
+                    alt=""
+                    onError={(e) => {
+                      const img = e.currentTarget
+                      if (!img.src.includes('mqdefault')) {
+                        img.src = `https://img.youtube.com/vi/${currentSong.youtube_id}/mqdefault.jpg`
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="wavvy-fullscreen-right">
+                <div className="wavvy-fullscreen-meta">
+                  <h2 className="wavvy-fullscreen-title">{currentSong.title}</h2>
+                  <p className="wavvy-fullscreen-artist">{currentSong.artist}</p>
+                  {currentSong.album && (
+                    <p className="wavvy-fullscreen-album">{currentSong.album}</p>
+                  )}
+                </div>
+
+                <div className="wavvy-fullscreen-controls-area">
+                  <PlayerControls
+                    variant="fullscreen"
+                    leftAction={
+                      <button
+                        type="button"
+                        className="wavvy-player-icon-btn"
+                        onClick={() => setShowPlaylistModal(true)}
+                        aria-label="Add to playlist"
+                      >
+                        <ListPlus size={18} />
+                      </button>
                     }
-                  }}
-                />
-              </div>
-
-              <div className="wavvy-fullscreen-meta">
-                <h2 className="wavvy-fullscreen-title">{currentSong.title}</h2>
-                <p className="wavvy-fullscreen-artist">{currentSong.artist}</p>
-                {currentSong.album && (
-                  <p className="wavvy-fullscreen-album">{currentSong.album}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="wavvy-fullscreen-page wavvy-fullscreen-page--lyrics">
-              <div className="wavvy-lyrics-screen" ref={lyricsScrollRef}>
-                {!rawLyrics ? (
-                  <p className="wavvy-lyrics-empty">No lyrics found for this song yet.</p>
-                ) : (
-                  <div className="wavvy-lyrics-lines" role="log" aria-label="Lyrics">
-                    {renderedLyricLines.map((line, idx) => {
-                      const active = idx === activeLyricIndex
-                      return (
-                        <p
-                          key={`${idx}-${line.slice(0, 16)}`}
-                          className={`wavvy-lyrics-line${active ? ' is-active' : ''}`}
-                          data-lyric-idx={idx}
-                        >
-                          {line}
-                        </p>
-                      )
-                    })}
-                  </div>
-                )}
+                    rightAction={
+                      <button
+                        type="button"
+                        className={`wavvy-player-icon-btn${isCurrentLiked ? ' is-active' : ''}`}
+                        onClick={toggleCurrentLike}
+                        aria-label={isCurrentLiked ? 'Unlike song' : 'Like song'}
+                        aria-pressed={isCurrentLiked}
+                      >
+                        <Heart size={18} fill={isCurrentLiked ? 'currentColor' : 'none'} />
+                      </button>
+                    }
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <PlayerControls
-          variant="fullscreen"
-          leftAction={
-            <button
-              type="button"
-              className="wavvy-player-icon-btn"
-              onClick={() => setShowPlaylistModal(true)}
-              aria-label="Add to playlist"
-            >
-              <ListPlus size={18} />
-            </button>
-          }
-          rightAction={
-            <button
-              type="button"
-              className={`wavvy-player-icon-btn${isCurrentLiked ? ' is-active' : ''}`}
-              onClick={toggleCurrentLike}
-              aria-label={isCurrentLiked ? 'Unlike song' : 'Like song'}
-              aria-pressed={isCurrentLiked}
-            >
-              <Heart size={18} fill={isCurrentLiked ? 'currentColor' : 'none'} />
-            </button>
-          }
-        />
-
-        <div className="wavvy-fullscreen-pagination" aria-hidden>
-          <button
-            type="button"
-            className={`wavvy-fullscreen-dot${activeView === 'player' ? ' is-active' : ''}`}
-            onClick={() => setActiveView('player')}
-          />
-          <button
-            type="button"
-            className={`wavvy-fullscreen-dot${activeView === 'lyrics' ? ' is-active' : ''}`}
-            onClick={() => setActiveView('lyrics')}
-          />
-        </div>
+        ) : (
+          <div className="wavvy-fullscreen-lyrics-view">
+            <div className="wavvy-lyrics-screen" ref={lyricsScrollRef}>
+              {renderedLyricLines.length > 0 ? (
+                <div className="wavvy-lyrics-lines">
+                  {renderedLyricLines.map((line, index) => (
+                    <p
+                      key={`${line}-${index}`}
+                      ref={(element) => {
+                        lyricsLineRefs.current[index] = element
+                      }}
+                      className={`wavvy-lyrics-line${index === activeLyricIndex ? ' is-active' : ''}`}
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="wavvy-lyrics-empty">
+                  No lyrics available for this track.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {showPlaylistModal && (
           <div

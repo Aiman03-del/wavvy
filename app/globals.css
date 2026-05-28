@@ -739,13 +739,51 @@ body {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.wavvy-fullscreen-tabs {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 0 0.7rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.wavvy-fullscreen-tab {
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.wavvy-fullscreen-tab:hover {
+  color: #e2e8f0;
+}
+
+.wavvy-fullscreen-tab.is-active {
+  color: #f8fafc;
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.wavvy-fullscreen-player-view,
+.wavvy-fullscreen-lyrics-view {
+  width: 100%;
+  max-width: 420px;
+}
+
 .wavvy-fullscreen-art-wrap {
   width: min(320px, 85vw);
   aspect-ratio: 1;
   border-radius: 1.25rem;
   overflow: hidden;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
 }
 
 .wavvy-fullscreen-art {
@@ -758,40 +796,16 @@ body {
 .wavvy-fullscreen-meta {
   text-align: center;
   width: 100%;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   padding: 0 0.5rem;
-}
-
-.wavvy-fullscreen-swiper {
-  width: 100%;
-  max-width: 420px;
-  overflow: hidden;
-  touch-action: pan-y;
-}
-
-.wavvy-fullscreen-swiper-track {
-  display: flex;
-  width: 200%;
-  transition: transform 0.26s ease;
-  will-change: transform;
-}
-
-.wavvy-fullscreen-page {
-  width: 50%;
-  flex-shrink: 0;
   min-width: 0;
 }
 
-.wavvy-fullscreen-page--player {
+.wavvy-fullscreen-grid {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-bottom: 0.4rem;
-}
-
-.wavvy-fullscreen-page--lyrics {
-  display: flex;
-  align-items: stretch;
+  gap: 0;
 }
 
 .wavvy-lyrics-screen {
@@ -804,6 +818,7 @@ body {
   min-height: 420px;
   max-height: min(70vh, 620px);
   overflow-y: auto;
+  touch-action: pan-y;
 }
 
 .wavvy-lyrics-empty {
@@ -830,6 +845,7 @@ body {
   transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
   transform-origin: left center;
   opacity: 0.78;
+  user-select: none;
 }
 
 .wavvy-lyrics-line.is-active {
@@ -874,17 +890,94 @@ body {
 
 .wavvy-fullscreen-title {
   font-family: "Syne", sans-serif;
-  font-size: clamp(1.35rem, 5vw, 1.75rem);
+  font-size: clamp(1.15rem, 4.6vw, 1.6rem);
   font-weight: 800;
   margin: 0;
   color: #f1f5f9;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wavvy-fullscreen-artist {
-  margin: 0.5rem 0 0;
+  margin: 0.35rem 0 0;
   color: #94a3b8;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .wavvy-fullscreen-art-wrap {
+    width: min(260px, 82vw);
+    margin-bottom: 0.9rem;
+  }
+
+  .wavvy-fullscreen-meta {
+    margin-bottom: 0.6rem;
+    padding: 0 0.25rem;
+  }
+
+  .wavvy-fullscreen-title {
+    font-size: 1.15rem;
+  }
+
+  .wavvy-fullscreen-artist {
+    font-size: 0.9rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .wavvy-fullscreen-panel {
+    max-width: 900px;
+    padding: 1.25rem 1.5rem 2rem;
+    align-items: stretch;
+  }
+
+  .wavvy-fullscreen-player-view,
+  .wavvy-fullscreen-lyrics-view {
+    max-width: none;
+  }
+
+  .wavvy-fullscreen-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: center;
+    width: 100%;
+  }
+
+  .wavvy-fullscreen-left {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .wavvy-fullscreen-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  .wavvy-fullscreen-meta {
+    text-align: left;
+    padding: 0;
+    margin-bottom: 1.25rem;
+  }
+
+  .wavvy-fullscreen-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: initial;
+    font-size: clamp(1.25rem, 2.2vw, 1.9rem);
+  }
+
+  .wavvy-fullscreen-artist {
+    font-size: 1rem;
+  }
 }
 
 .wavvy-fullscreen-album {
