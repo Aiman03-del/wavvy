@@ -26,8 +26,22 @@ export default function SongCard({
     song.thumbnail_url ||
     `https://img.youtube.com/vi/${song.youtube_id}/mqdefault.jpg`
 
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onClick()
+    }
+  }
+
   return (
-    <div className={`wavvy-song-card${isActive ? ' is-active' : ''}`}>
+    <div
+      className={`wavvy-song-card${isActive ? ' is-active' : ''}`}
+      onClick={onClick}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Play ${song.title}`}
+    >
       <div className="wavvy-song-card-thumb-wrap">
         <button type="button" className="wavvy-song-card-play-hit" onClick={onClick}>
           <img className="wavvy-song-card-thumb" src={thumb} alt={song.title} />
@@ -57,7 +71,10 @@ export default function SongCard({
           <button
             type="button"
             className={`wavvy-song-action-btn${isLiked ? ' is-active' : ''}`}
-            onClick={() => onToggleLike?.(song)}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleLike?.(song)
+            }}
             aria-label={isLiked ? 'Unlike song' : 'Like song'}
           >
             <Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />

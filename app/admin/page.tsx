@@ -65,11 +65,13 @@ export default function AdminPage() {
   const [editingSong, setEditingSong] = useState<Song | null>(null)
   const [songForm, setSongForm] = useState({
     title: '', artist: '', youtube_id: '', album: '',
-    genre: 'Pop', mood: 'chill', thumbnail_url: '',
+    genre: '', mood: '', thumbnail_url: '', lyrics: '',
   })
   const [savingSong, setSavingSong] = useState(false)
   const [autoFillingSong, setAutoFillingSong] = useState(false)
   const [lastAutoFilledId, setLastAutoFilledId] = useState('')
+  const [autoGeneratingLyrics, setAutoGeneratingLyrics] = useState(false)
+  const [lastAutoLyricsId, setLastAutoLyricsId] = useState('')
   const [selectedRequest, setSelectedRequest] = useState<SongRequest | null>(null)
 
   // Requests state
@@ -151,8 +153,9 @@ export default function AdminPage() {
           ...current,
           title: current.title || title || oembedTitle,
           artist: current.artist || artist || inferArtistFromTitle(oembedTitle) || current.artist,
-          genre: inferGenreFromText(combinedText) || current.genre,
-          mood: inferMoodFromText(combinedText) || current.mood,
+          album: current.album || album || current.album,
+          genre: current.genre || inferGenreFromText(combinedText) || current.genre,
+          mood: current.mood || inferMoodFromText(combinedText) || current.mood,
           thumbnail_url: current.thumbnail_url || `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`,
         }))
 
@@ -167,13 +170,63 @@ export default function AdminPage() {
     return () => clearTimeout(timeout)
   }, [editingSong, lastAutoFilledId, songForm.youtube_id])
 
+  useEffect(() => {
+    const ytId = extractYouTubeId(songForm.youtube_id)
+
+    if (!ytId) return
+    if (lastAutoLyricsId === ytId) return
+    if (autoGeneratingLyrics) return
+    if (songForm.lyrics.trim()) return
+    if (!songForm.title.trim() || !songForm.artist.trim()) return
+
+    const timeout = setTimeout(async () => {
+      try {
+        setAutoGeneratingLyrics(true)
+        const res = await fetch('/api/lyrics/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: songForm.title.trim(),
+            artist: songForm.artist.trim(),
+            youtubeId: ytId,
+          }),
+        })
+
+        if (!res.ok) return
+        const data = await res.json() as { lyrics?: string }
+        const lyrics = (data.lyrics || '').trim()
+        if (!lyrics) return
+
+        setSongForm((current) => {
+          if (current.lyrics.trim()) return current
+          return { ...current, lyrics }
+        })
+        setLastAutoLyricsId(ytId)
+      } catch {
+        // Keep the form usable if lyric generation fails.
+      } finally {
+        setAutoGeneratingLyrics(false)
+      }
+    }, 650)
+
+    return () => clearTimeout(timeout)
+  }, [
+    autoGeneratingLyrics,
+    lastAutoLyricsId,
+    songForm.youtube_id,
+    songForm.title,
+    songForm.artist,
+    songForm.lyrics,
+  ])
+
   // ─── Song CRUD ───────────────────────────────────────
 
   const openAddSong = () => {
     setEditingSong(null)
     setSelectedRequest(null)
-    setSongForm({ title: '', artist: '', youtube_id: '', album: '', genre: 'Pop', mood: 'chill', thumbnail_url: '' })
+    setSongForm({ title: '', artist: '', youtube_id: '', album: '', genre: '', mood: '', thumbnail_url: '', lyrics: '' })
     setLastAutoFilledId('')
+    setLastAutoLyricsId('')
     setShowAddSong(true)
   }
 
@@ -191,11 +244,13 @@ export default function AdminPage() {
       artist: '',
       youtube_id: ytId,
       album: '',
-      genre: 'Pop',
-      mood: 'chill',
+      genre: '',
+      mood: '',
       thumbnail_url: `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`,
+      lyrics: '',
     })
     setLastAutoFilledId('')
+    setLastAutoLyricsId('')
     setShowAddSong(true)
     setTab('songs')
   }
@@ -207,9 +262,10 @@ export default function AdminPage() {
       artist: song.artist,
       youtube_id: song.youtube_id,
       album: song.album || '',
-      genre: song.genre || 'Pop',
-      mood: song.mood || 'chill',
+      genre: song.genre || '',
+      mood: song.mood || '',
       thumbnail_url: song.thumbnail_url || '',
+      lyrics: song.lyrics || '',
     })
     setShowAddSong(true)
   }
@@ -218,40 +274,71 @@ export default function AdminPage() {
     if (!songForm.title.trim() || !songForm.artist.trim() || !songForm.youtube_id.trim()) return
     setSavingSong(true)
 
-    // Extract video ID from URL if full URL pasted
-    let ytId = songForm.youtube_id.trim()
-    const urlMatch = ytId.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/)
-    if (urlMatch) ytId = urlMatch[1]
+    try {
+      // Extract video ID from URL if full URL pasted
+      let ytId = songForm.youtube_id.trim()
+      const urlMatch = ytId.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/)
+      if (urlMatch) ytId = urlMatch[1]
 
-    const payload = {
-      title: songForm.title.trim(),
-      artist: songForm.artist.trim(),
-      youtube_id: ytId,
-      genre: songForm.genre,
-      mood: songForm.mood,
-      thumbnail_url: songForm.thumbnail_url.trim() ||
-        `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`,
+      const payload: Record<string, unknown> = {
+        title: songForm.title.trim(),
+        artist: songForm.artist.trim(),
+        youtube_id: ytId,
+        album: songForm.album.trim() || null,
+        genre: songForm.genre || null,
+        mood: songForm.mood || null,
+        lyrics: songForm.lyrics.trim() || null,
+        thumbnail_url: songForm.thumbnail_url.trim() ||
+          `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`,
+      }
+
+      const writeSong = async (data: Record<string, unknown>) => {
+        if (editingSong) {
+          return await supabase.from('songs').update(data).eq('id', editingSong.id)
+        }
+        return await supabase.from('songs').insert({ ...data, play_count: 0 })
+      }
+
+      let { error } = await writeSong(payload)
+
+      // If the DB schema doesn't have optional columns (album/genre/mood),
+      // retry without them so admins can still add songs.
+      if (error?.code === 'PGRST204') {
+        const reduced = { ...payload }
+        const msg = (error.message || '').toLowerCase()
+        if (msg.includes("'album'")) delete reduced.album
+        if (msg.includes("'genre'")) delete reduced.genre
+        if (msg.includes("'mood'")) delete reduced.mood
+        if (msg.includes("'lyrics'")) delete reduced.lyrics
+        ;({ error } = await writeSong(reduced))
+      }
+
+      if (error) {
+        toast.error(error.message || 'Failed to save song')
+        return
+      }
+
+      if (selectedRequest) {
+        const { error: reqErr } = await supabase
+          .from('song_requests')
+          .update({ status: 'approved' })
+          .eq('id', selectedRequest.id)
+        if (!reqErr) {
+          setRequests(prev => prev.map(request => request.id === selectedRequest.id ? { ...request, status: 'approved' } : request))
+          setStats(prev => ({
+            ...prev,
+            pending: selectedRequest.status === 'pending' ? Math.max(prev.pending - 1, 0) : prev.pending,
+          }))
+        }
+      }
+
+      toast.success(editingSong ? 'Song updated' : 'Song added')
+      setShowAddSong(false)
+      setSelectedRequest(null)
+      loadAll()
+    } finally {
+      setSavingSong(false)
     }
-
-    if (editingSong) {
-      await supabase.from('songs').update(payload).eq('id', editingSong.id)
-    } else {
-      await supabase.from('songs').insert({ ...payload, play_count: 0 })
-    }
-
-    if (selectedRequest) {
-      await supabase.from('song_requests').update({ status: 'approved' }).eq('id', selectedRequest.id)
-      setRequests(prev => prev.map(request => request.id === selectedRequest.id ? { ...request, status: 'approved' } : request))
-      setStats(prev => ({
-        ...prev,
-        pending: selectedRequest.status === 'pending' ? Math.max(prev.pending - 1, 0) : prev.pending,
-      }))
-    }
-
-    setSavingSong(false)
-    setShowAddSong(false)
-    setSelectedRequest(null)
-    loadAll()
   }
 
   const deleteSong = async (id: string) => {
@@ -866,6 +953,7 @@ export default function AdminPage() {
                   <select className="admin-input" value={songForm.genre}
                     onChange={e => setSongForm(p => ({ ...p, genre: e.target.value }))}
                     style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="">Auto</option>
                     {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
@@ -874,6 +962,7 @@ export default function AdminPage() {
                   <select className="admin-input" value={songForm.mood}
                     onChange={e => setSongForm(p => ({ ...p, mood: e.target.value }))}
                     style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="">Auto</option>
                     {MOODS.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                   </select>
                 </div>
@@ -886,6 +975,25 @@ export default function AdminPage() {
                   value={songForm.thumbnail_url}
                   onChange={e => setSongForm(p => ({ ...p, thumbnail_url: e.target.value }))}
                   style={inputStyle} />
+              </div>
+
+              {/* Lyrics */}
+              <div>
+                <label style={labelStyle}>
+                  Lyrics <span style={{ color: '#475569', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <textarea
+                  className="admin-input"
+                  placeholder="Auto-generates when empty (after Title + Artist are filled)"
+                  value={songForm.lyrics}
+                  onChange={e => setSongForm(p => ({ ...p, lyrics: e.target.value }))}
+                  style={{ ...inputStyle, minHeight: '120px', resize: 'vertical', lineHeight: 1.5 }}
+                />
+                {autoGeneratingLyrics && (
+                  <p style={{ color: '#94A3B8', fontSize: '0.78rem', marginTop: '0.45rem' }}>
+                    Generating lyrics…
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
@@ -1044,7 +1152,7 @@ function extractYouTubeId(value: string) {
 }
 
 function splitYouTubeTitle(rawTitle: string) {
-  const cleanedTitle = rawTitle.replace(/\s*\(.*?\)\s*$/g, '').trim()
+  const cleanedTitle = normalizeTitle(rawTitle).replace(/\s*\(.*?\)\s*$/g, '').trim()
   const parts = cleanedTitle.split(/\s[-|•:]\s/)
 
   if (parts.length >= 2) {
@@ -1074,29 +1182,79 @@ function inferArtistFromTitle(title: string) {
 }
 
 function inferAlbumFromTitle(title: string) {
-  const bracketMatch = title.match(/\[(.*?)\]/)
-  if (bracketMatch) return bracketMatch[1].trim()
-  const parenMatch = title.match(/\((.*?)\)/)
-  if (parenMatch && /album|ep|lp/i.test(parenMatch[1])) return parenMatch[1].trim()
+  const normalized = normalizeTitle(title)
+
+  // [Album Name]
+  const bracketMatch = normalized.match(/\[(?<album>[^\]]{2,})\]/)
+  if (bracketMatch?.groups?.album) return bracketMatch.groups.album.trim()
+
+  // (Album: Name) / (from "Name") / (EP: Name) etc
+  const parenMatch = normalized.match(/\((?<inside>[^)]{2,})\)/)
+  if (parenMatch?.groups?.inside) {
+    const inside = parenMatch.groups.inside.trim()
+    const labeled = inside.match(/^(?:album|ep|lp|ost|soundtrack)\s*[:\-]\s*(?<album>.+)$/i)
+    if (labeled?.groups?.album) return labeled.groups.album.trim()
+    const fromQuoted = inside.match(/^(?:from|off|taken from)\s*["“”'](?<album>.+?)["“”']$/i)
+    if (fromQuoted?.groups?.album) return fromQuoted.groups.album.trim()
+    if (/\b(album|ep|lp|ost|soundtrack)\b/i.test(inside)) return inside
+  }
+
+  // from "Album Name" / from Album Name
+  const fromQuoted = normalized.match(/\bfrom\s*["“”'](?<album>.+?)["“”']/i)
+  if (fromQuoted?.groups?.album) return fromQuoted.groups.album.trim()
+  const fromPlain = normalized.match(/\bfrom\s+(?<album>[^|•\-–—]{3,})/i)
+  if (fromPlain?.groups?.album) return fromPlain.groups.album.trim()
+
+  // Album: Name | ...
+  const pipeAlbum = normalized.match(/\balbum\s*[:\-]\s*(?<album>[^|]+)\b/i)
+  if (pipeAlbum?.groups?.album) return pipeAlbum.groups.album.trim()
+
   return ''
 }
 
 function inferGenreFromText(text: string) {
-  if (/hip\s?hop|rap|trap|drill/.test(text)) return 'Hip-Hop'
-  if (/r&b|rnb|soul/.test(text)) return 'R&B'
-  if (/rock|metal|punk/.test(text)) return 'Rock'
-  if (/classical|orchestra|piano sonata|symphony/.test(text)) return 'Classical'
-  if (/jazz|swing|blues/.test(text)) return 'Jazz'
-  if (/electronic|edm|dance|remix|dj/.test(text)) return 'Electronic'
-  if (/folk|acoustic|indie|alternative/.test(text)) return 'Indie'
+  const t = normalizeTextForInference(text)
+  if (/(hip\s?hop|rap|trap|drill|grime|boom bap)/.test(t)) return 'Hip-Hop'
+  if (/(r&b|rnb|soul|neo\s?soul)/.test(t)) return 'R&B'
+  if (/(rock|metal|punk|pop punk|hardcore)/.test(t)) return 'Rock'
+  if (/(classical|orchestra|piano(?!\s?tutorial)|sonata|symphony|concerto|mozart|beethoven|chopin)/.test(t)) return 'Classical'
+  if (/(jazz|swing|blues|bossa|bebop)/.test(t)) return 'Jazz'
+  if (/(electronic|edm|dance|remix|dj|house|techno|trance|dubstep|dnb|drum\s?and\s?bass)/.test(t)) return 'Electronic'
+  if (/(indie|alternative|alt\b|acoustic|folk|singer[-\s]?songwriter|lofi|lo-fi)/.test(t)) return 'Indie'
+  if (/\bpop\b/.test(t)) return 'Pop'
   return ''
 }
 
 function inferMoodFromText(text: string) {
-  if (/sad|blue|lonely|cry|tears|broken/.test(text)) return 'sad'
-  if (/party|dance|club|night|festival|upbeat/.test(text)) return 'party'
-  if (/chill|calm|relax|lofi|study|sleep|ambient/.test(text)) return 'chill'
-  if (/focus|study|work|concentrat|instrumental/.test(text)) return 'focus'
-  if (/happy|love|joy|summer|feel good/.test(text)) return 'happy'
+  const t = normalizeTextForInference(text)
+
+  // Strong signals first
+  if (/(sad|blue|lonely|cry|tears|broken|heartbreak|depress|melanchol)/.test(t)) return 'sad'
+  if (/(party|club|festival|turn up|upbeat|dancehall|banger)/.test(t)) return 'party'
+  if (/(chill|calm|relax|lofi|lo-fi|ambient|sleep|nightdrive|vibes)/.test(t)) return 'chill'
+  if (/(focus|study|work|concentrat|instrumental|beats to study|coding music)/.test(t)) return 'focus'
+  if (/(happy|joy|feel good|good vibes|summer|smile|love song)/.test(t)) return 'happy'
+
+  // Fallbacks: common video labels implying vibe
+  if (/\b(instrumental|piano|beats)\b/.test(t)) return 'focus'
   return ''
+}
+
+function normalizeTitle(value: string) {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/\s*[\|•]\s*/g, ' | ')
+    .replace(/\s*[-–—]\s*/g, ' - ')
+    .trim()
+}
+
+function normalizeTextForInference(value: string) {
+  const lowered = value.toLowerCase()
+  // strip noisy/overcommon tokens so keyword matching works better
+  return lowered
+    .replace(/\[[^\]]*]/g, ' ')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(official\s*(video|audio)|music\s*video|lyrics?|lyric\s*video|audio|video|hd|4k|mv|visualizer|performance|live|feat\.?|ft\.?|remaster(?:ed)?|version|edit|explicit|clean)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }

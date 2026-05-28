@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import {
   Pause,
   Play,
@@ -15,11 +16,15 @@ import { useMusicStore } from '@/store/musicStore'
 interface PlayerControlsProps {
   variant?: 'bar' | 'fullscreen'
   showProgress?: boolean
+  leftAction?: ReactNode
+  rightAction?: ReactNode
 }
 
 export default function PlayerControls({
   variant = 'bar',
   showProgress = true,
+  leftAction,
+  rightAction,
 }: PlayerControlsProps) {
   const {
     isPlaying,
@@ -72,6 +77,8 @@ export default function PlayerControls({
       )}
 
       <div className="wavvy-player-buttons-row">
+        {leftAction}
+
         <button
           type="button"
           className={`wavvy-player-icon-btn${isShuffle ? ' is-active' : ''}`}
@@ -124,6 +131,8 @@ export default function PlayerControls({
             <span className="wavvy-player-repeat-badge">1</span>
           )}
         </button>
+
+        {rightAction}
       </div>
     </div>
   )
