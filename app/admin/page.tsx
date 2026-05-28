@@ -1184,9 +1184,9 @@ function inferArtistFromTitle(title: string) {
 function inferAlbumFromTitle(title: string) {
   const normalized = normalizeTitle(title)
 
-  // [Album Name]
-  const bracketMatch = normalized.match(/\[(?<album>[^\]]{2,})\]/)
-  if (bracketMatch?.groups?.album) return bracketMatch.groups.album.trim()
+ // ✅ Named group বাদ দিন
+const bracketMatch = normalized.match(/\[([^\]]{2,})\]/)
+if (bracketMatch?.[1]) return bracketMatch[1].trim()
 
   // (Album: Name) / (from "Name") / (EP: Name) etc
   const parenMatch = normalized.match(/\((?<inside>[^)]{2,})\)/)
