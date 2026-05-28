@@ -9,9 +9,10 @@ import PlayerControls from '@/components/ui/player/PlayerControls'
 import {
   hasNonLatin,
   parseLrc,
+  pickActivePlainLyricIndex,
   pickActiveLrcIndex,
-  renderTypedTextByProgress,
   romanizeToEnglishLetters,
+  splitPlainLyricsToLines,
 } from '@/lib/lyrics'
 
 export default function FullScreenPlayer() {
@@ -25,6 +26,7 @@ export default function FullScreenPlayer() {
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [likedSongIds, setLikedSongIds] = useState<string[]>([])
   const [activeView, setActiveView] = useState<'player' | 'lyrics'>('player')
+  const [resolvedLyrics, setResolvedLyrics] = useState('')
 
   const { currentSong, isFullScreen, isPlaying, toggleFullScreen, progress, duration } =
     useMusicStore()
@@ -111,7 +113,7 @@ export default function FullScreenPlayer() {
     loadLikedState()
   }, [currentSong?.id, isFullScreen, userId])
 
-  const rawLyrics = (currentSong?.lyrics || '').trim()
+  const rawLyrics = (resolvedLyrics || currentSong?.lyrics || '').trim()
   const lrcLines = useMemo(() => parseLrc(rawLyrics), [rawLyrics])
   const activeLrcIndex = useMemo(
     () => (lrcLines.length > 0 ? pickActiveLrcIndex(lrcLines, progress) : -1),
@@ -123,33 +125,68 @@ export default function FullScreenPlayer() {
     return hasNonLatin(rawLyrics) ? romanizeToEnglishLetters(rawLyrics) : rawLyrics
   }, [rawLyrics])
 
-  const typedFallbackLyrics = useMemo(() => {
-    if (!romanizedLyrics) return ''
-    // If it's time-coded LRC, we show per-line mode instead of typewriter.
-    if (lrcLines.length > 0) return romanizedLyrics
-    return renderTypedTextByProgress({
-      text: romanizedLyrics,
-      progressSeconds: progress,
-      durationSeconds: duration,
-    })
-  }, [duration, lrcLines.length, progress, romanizedLyrics])
+  const plainLyricsLines = useMemo(
+    () => splitPlainLyricsToLines(romanizedLyrics),
+    [romanizedLyrics]
+  )
+
+  const activePlainIndex = useMemo(
+    () =>
+      pickActivePlainLyricIndex({
+        lineCount: plainLyricsLines.length,
+        progressSeconds: progress,
+        durationSeconds: duration,
+      }),
+    [duration, plainLyricsLines.length, progress]
+  )
+
+  const renderedLyricLines = lrcLines.length > 0 ? lrcLines.map((line) => {
+    const text = hasNonLatin(line.text) ? romanizeToEnglishLetters(line.text) : line.text
+    return text || '...'
+  }) : plainLyricsLines
+
+  const activeLyricIndex = lrcLines.length > 0 ? activeLrcIndex : activePlainIndex
 
   useEffect(() => {
     if (activeView !== 'lyrics') return
     if (!lyricsScrollRef.current) return
-    if (activeLrcIndex < 0) return
+    if (activeLyricIndex < 0) return
 
     const el = lyricsScrollRef.current.querySelector(
-      `[data-lrc-idx="${activeLrcIndex}"]`
+      `[data-lyric-idx="${activeLyricIndex}"]`
     ) as HTMLElement | null
 
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [activeLrcIndex, activeView])
+  }, [activeLyricIndex, activeView])
 
   useEffect(() => {
     if (!isFullScreen) return
     setActiveView('player')
   }, [currentSong?.id, isFullScreen])
+
+  useEffect(() => {
+    if (!isFullScreen || !currentSong?.id) return
+
+    // Start with whatever came from current list payload.
+    setResolvedLyrics(currentSong.lyrics || '')
+
+    // If the in-memory song has no lyrics, fetch fresh value from DB.
+    if ((currentSong.lyrics || '').trim()) return
+
+    const loadLyrics = async () => {
+      const { data } = await supabase
+        .from('songs')
+        .select('lyrics')
+        .eq('id', currentSong.id)
+        .maybeSingle()
+
+      if (data?.lyrics) {
+        setResolvedLyrics(data.lyrics)
+      }
+    }
+
+    loadLyrics()
+  }, [currentSong?.id, currentSong?.lyrics, isFullScreen])
 
   if (!isFullScreen || !currentSong) return null
 
@@ -223,7 +260,8 @@ export default function FullScreenPlayer() {
   }
 
   const isCurrentLiked = likedSongIds.includes(currentSong.id)
-  const translatePercent = activeView === 'lyrics' ? -100 : 0
+  // Track is 200% wide with two 50% pages, so second page starts at -50%.
+  const translatePercent = activeView === 'lyrics' ? -50 : 0
 
   return (
     <div
@@ -292,61 +330,57 @@ export default function FullScreenPlayer() {
                   <p className="wavvy-fullscreen-album">{currentSong.album}</p>
                 )}
               </div>
-
-              <PlayerControls
-                variant="fullscreen"
-                leftAction={
-                  <button
-                    type="button"
-                    className="wavvy-player-icon-btn"
-                    onClick={() => setShowPlaylistModal(true)}
-                    aria-label="Add to playlist"
-                  >
-                    <ListPlus size={18} />
-                  </button>
-                }
-                rightAction={
-                  <button
-                    type="button"
-                    className={`wavvy-player-icon-btn${isCurrentLiked ? ' is-active' : ''}`}
-                    onClick={toggleCurrentLike}
-                    aria-label={isCurrentLiked ? 'Unlike song' : 'Like song'}
-                    aria-pressed={isCurrentLiked}
-                  >
-                    <Heart size={18} fill={isCurrentLiked ? 'currentColor' : 'none'} />
-                  </button>
-                }
-              />
             </div>
 
             <div className="wavvy-fullscreen-page wavvy-fullscreen-page--lyrics">
               <div className="wavvy-lyrics-screen" ref={lyricsScrollRef}>
                 {!rawLyrics ? (
                   <p className="wavvy-lyrics-empty">No lyrics found for this song yet.</p>
-                ) : lrcLines.length > 0 ? (
+                ) : (
                   <div className="wavvy-lyrics-lines" role="log" aria-label="Lyrics">
-                    {lrcLines.map((line, idx) => {
-                      const active = idx === activeLrcIndex
+                    {renderedLyricLines.map((line, idx) => {
+                      const active = idx === activeLyricIndex
                       return (
                         <p
-                          key={`${line.time}-${idx}`}
+                          key={`${idx}-${line.slice(0, 16)}`}
                           className={`wavvy-lyrics-line${active ? ' is-active' : ''}`}
-                          data-lrc-idx={idx}
+                          data-lyric-idx={idx}
                         >
-                          {hasNonLatin(line.text) ? romanizeToEnglishLetters(line.text) : line.text || '...'}
+                          {line}
                         </p>
                       )
                     })}
                   </div>
-                ) : (
-                  <pre className="wavvy-lyrics-typed" aria-label="Lyrics">
-                    {typedFallbackLyrics}
-                  </pre>
                 )}
               </div>
             </div>
           </div>
         </div>
+
+        <PlayerControls
+          variant="fullscreen"
+          leftAction={
+            <button
+              type="button"
+              className="wavvy-player-icon-btn"
+              onClick={() => setShowPlaylistModal(true)}
+              aria-label="Add to playlist"
+            >
+              <ListPlus size={18} />
+            </button>
+          }
+          rightAction={
+            <button
+              type="button"
+              className={`wavvy-player-icon-btn${isCurrentLiked ? ' is-active' : ''}`}
+              onClick={toggleCurrentLike}
+              aria-label={isCurrentLiked ? 'Unlike song' : 'Like song'}
+              aria-pressed={isCurrentLiked}
+            >
+              <Heart size={18} fill={isCurrentLiked ? 'currentColor' : 'none'} />
+            </button>
+          }
+        />
 
         <div className="wavvy-fullscreen-pagination" aria-hidden>
           <button

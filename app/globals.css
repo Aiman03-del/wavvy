@@ -786,6 +786,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-bottom: 0.4rem;
 }
 
 .wavvy-fullscreen-page--lyrics {
@@ -797,8 +798,9 @@ body {
   width: 100%;
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 10, 15, 0.65);
-  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(10, 10, 15, 0.92) 0%, rgba(10, 10, 15, 0.68) 30%, rgba(10, 10, 15, 0.92) 100%);
+  padding: 1.2rem 1rem;
   min-height: 420px;
   max-height: min(70vh, 620px);
   overflow-y: auto;
@@ -814,20 +816,27 @@ body {
 .wavvy-lyrics-lines {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.6rem;
+  padding: 26vh 0;
 }
 
 .wavvy-lyrics-line {
   margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.55;
-  color: rgba(148, 163, 184, 0.9);
-  transition: color 0.15s ease, transform 0.15s ease;
+  font-size: clamp(1.02rem, 1.7vw, 1.22rem);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: rgba(148, 163, 184, 0.45);
+  transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  transform-origin: left center;
+  opacity: 0.78;
 }
 
 .wavvy-lyrics-line.is-active {
   color: #f1f5f9;
-  transform: scale(1.02);
+  transform: scale(1.045);
+  opacity: 1;
+  text-shadow: 0 0 24px rgba(59, 130, 246, 0.28);
 }
 
 .wavvy-lyrics-typed {
@@ -841,7 +850,7 @@ body {
 }
 
 .wavvy-fullscreen-pagination {
-  margin-top: 0.8rem;
+  margin-top: 0.55rem;
   display: flex;
   gap: 0.45rem;
   align-items: center;

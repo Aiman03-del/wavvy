@@ -59,18 +59,22 @@ export function pickActiveLrcIndex(lines: LrcLine[], progressSeconds: number) {
   return active
 }
 
-export function renderTypedTextByProgress(params: {
-  text: string
+export function splitPlainLyricsToLines(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
+export function pickActivePlainLyricIndex(params: {
+  lineCount: number
   progressSeconds: number
   durationSeconds: number
 }) {
-  const { text, progressSeconds, durationSeconds } = params
-  if (!text) return ''
-  if (!durationSeconds || durationSeconds <= 0) return text
-
+  const { lineCount, progressSeconds, durationSeconds } = params
+  if (lineCount <= 0) return -1
+  if (!durationSeconds || durationSeconds <= 0) return 0
   const pct = Math.max(0, Math.min(1, progressSeconds / durationSeconds))
-  const total = text.length
-  const visible = Math.max(0, Math.min(total, Math.floor(total * pct)))
-  return text.slice(0, visible)
+  return Math.min(lineCount - 1, Math.floor(pct * lineCount))
 }
 
