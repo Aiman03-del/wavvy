@@ -1184,30 +1184,29 @@ function inferArtistFromTitle(title: string) {
 function inferAlbumFromTitle(title: string) {
   const normalized = normalizeTitle(title)
 
- // ✅ Named group বাদ দিন
-const bracketMatch = normalized.match(/\[([^\]]{2,})\]/)
-if (bracketMatch?.[1]) return bracketMatch[1].trim()
+  const bracketMatch = normalized.match(/\[([^\]]{2,})\]/)
+  if (bracketMatch?.[1]) return bracketMatch[1].trim()
 
   // (Album: Name) / (from "Name") / (EP: Name) etc
-  const parenMatch = normalized.match(/\((?<inside>[^)]{2,})\)/)
-  if (parenMatch?.groups?.inside) {
-    const inside = parenMatch.groups.inside.trim()
-    const labeled = inside.match(/^(?:album|ep|lp|ost|soundtrack)\s*[:\-]\s*(?<album>.+)$/i)
-    if (labeled?.groups?.album) return labeled.groups.album.trim()
-    const fromQuoted = inside.match(/^(?:from|off|taken from)\s*["“”'](?<album>.+?)["“”']$/i)
-    if (fromQuoted?.groups?.album) return fromQuoted.groups.album.trim()
+  const parenMatch = normalized.match(/\(([^)]{2,})\)/)
+  if (parenMatch?.[1]) {
+    const inside = parenMatch[1].trim()
+    const labeled = inside.match(/^(?:album|ep|lp|ost|soundtrack)\s*[:\-]\s*(.+)$/i)
+    if (labeled?.[1]) return labeled[1].trim()
+    const fromQuoted = inside.match(/^(?:from|off|taken from)\s*["“”'](.+?)["“”']$/i)
+    if (fromQuoted?.[1]) return fromQuoted[1].trim()
     if (/\b(album|ep|lp|ost|soundtrack)\b/i.test(inside)) return inside
   }
 
   // from "Album Name" / from Album Name
-  const fromQuoted = normalized.match(/\bfrom\s*["“”'](?<album>.+?)["“”']/i)
-  if (fromQuoted?.groups?.album) return fromQuoted.groups.album.trim()
-  const fromPlain = normalized.match(/\bfrom\s+(?<album>[^|•\-–—]{3,})/i)
-  if (fromPlain?.groups?.album) return fromPlain.groups.album.trim()
+  const fromQuoted = normalized.match(/\bfrom\s*["“”'](.+?)["“”']/i)
+  if (fromQuoted?.[1]) return fromQuoted[1].trim()
+  const fromPlain = normalized.match(/\bfrom\s+([^|•\-–—]{3,})/i)
+  if (fromPlain?.[1]) return fromPlain[1].trim()
 
   // Album: Name | ...
-  const pipeAlbum = normalized.match(/\balbum\s*[:\-]\s*(?<album>[^|]+)\b/i)
-  if (pipeAlbum?.groups?.album) return pipeAlbum.groups.album.trim()
+  const pipeAlbum = normalized.match(/\balbum\s*[:\-]\s*([^|]+)\b/i)
+  if (pipeAlbum?.[1]) return pipeAlbum[1].trim()
 
   return ''
 }
