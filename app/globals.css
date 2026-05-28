@@ -138,8 +138,9 @@
 }
 
 html,
-body {
-  overflow-x: hidden;
+body,
+#__next {
+  overflow-x: clip;
 }
 
 .wavvy-dashboard {
@@ -156,6 +157,7 @@ body {
   padding-bottom: calc(var(--wavvy-player-height) + 12px);
   min-height: 100vh;
   overflow: auto;
+  overflow-x: clip;
   min-width: 0;
 }
 
@@ -1292,6 +1294,71 @@ body {
     height: 6px;
   }
 
+  .wavvy-fullscreen {
+    padding: 0.5rem;
+    overflow-x: clip;
+  }
+
+  .wavvy-fullscreen-panel {
+    width: 100%;
+    max-width: none;
+    padding: 0.5rem 0.75rem 1.25rem;
+    align-items: stretch;
+    overflow-x: clip;
+  }
+
+  .wavvy-fullscreen-tabs {
+    max-width: none;
+    margin-bottom: 0.75rem;
+  }
+
+  .wavvy-fullscreen-player-view,
+  .wavvy-fullscreen-lyrics-view {
+    max-width: none;
+    overflow-x: clip;
+  }
+
+  .wavvy-fullscreen-grid {
+    width: 100%;
+  }
+
+  .wavvy-fullscreen-left,
+  .wavvy-fullscreen-right {
+    width: 100%;
+  }
+
+  .wavvy-fullscreen-art-wrap {
+    width: min(68vw, 220px);
+    margin: 0 auto 1rem;
+  }
+
+  .wavvy-fullscreen-meta {
+    margin-bottom: 0.85rem;
+    padding: 0;
+    text-align: center;
+  }
+
+  .wavvy-fullscreen-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: initial;
+    text-align: center;
+    font-size: clamp(1.05rem, 5.2vw, 1.35rem);
+  }
+
+  .wavvy-fullscreen-artist {
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .wavvy-fullscreen-album {
+    text-align: center;
+  }
+
+  .wavvy-fullscreen-controls-area {
+    width: 100%;
+  }
+
   .wavvy-admin-topbar {
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
@@ -1323,7 +1390,9 @@ body {
 .wavvy-page-form,
 .wavvy-player,
 .wavvy-fullscreen,
-.wavvy-fullscreen-panel {
+.wavvy-fullscreen-panel,
+.wavvy-fullscreen-player-view,
+.wavvy-fullscreen-lyrics-view {
   overflow-x: hidden;
 }
 
