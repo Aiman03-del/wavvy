@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle2, Clock, Send, Target, XCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 
 interface Request {
@@ -201,11 +202,7 @@ export default function RequestPage() {
         </h2>
 
         {loading ? (
-          <div className="wavvy-song-grid">
-            {Array(3).fill(0).map((_,i) => (
-              <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
-            ))}
-          </div>
+          <LoadingSpinner block label="Loading requests..." />
         ) : myRequests.length === 0 ? (
           <div style={{
             textAlign: 'center', padding: '2.5rem',

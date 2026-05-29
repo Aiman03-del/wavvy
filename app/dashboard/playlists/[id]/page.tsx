@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Clock3, Music2, Plus, Play, Search, Shuffle, Sparkles, Trash2, X } from 'lucide-react'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import { shuffleArray } from '@/lib/player'
@@ -197,11 +198,7 @@ export default function PlaylistDetailPage() {
   const accent = playlist?.name?.trim().toLowerCase().includes('liked') ? '#3B82F6' : '#A78BFA'
 
   if (loading) {
-    return (
-      <div className="wavvy-page-narrow">
-        <div className="wavvy-skeleton wavvy-skeleton-title" />
-      </div>
-    )
+    return <LoadingSpinner block label="Loading playlist..." />
   }
 
   if (!playlist) {
@@ -573,7 +570,7 @@ export default function PlaylistDetailPage() {
 
             <div style={{ padding: '0 1.2rem 1.2rem', overflowY: 'auto' }}>
               {searchLoading ? (
-                <div style={{ color: '#94A3B8', padding: '1.5rem 0' }}>Searching songs...</div>
+                <LoadingSpinner block label="Searching songs..." size={28} />
               ) : searchResults.length === 0 ? (
                 <div style={{ color: '#94A3B8', padding: '1.5rem 0' }}>
                   No matching songs found.

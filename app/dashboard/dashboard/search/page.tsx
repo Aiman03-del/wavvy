@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Frown, Music2, PartyPopper, Search, Smile, Target, TrendingUp, Wind, X } from 'lucide-react'
 import SongGrid from '@/components/ui/SongGrid'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import type { Song } from '@/types'
@@ -216,13 +217,7 @@ export default function SearchPage() {
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="wavvy-song-grid">
-          {Array(6).fill(0).map((_, i) => (
-            <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
-          ))}
-        </div>
-      )}
+      {loading && <LoadingSpinner block label="Searching songs..." />}
 
       {/* Empty State */}
       {!loading && songs.length === 0 && (

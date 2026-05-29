@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ListMusic, Music2, Plus, Trash2 } from 'lucide-react'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import type { Song } from '@/types'
 
@@ -148,13 +149,7 @@ export default function PlaylistsPage() {
         </button>
       </div>
 
-      {loading && (
-        <div className="wavvy-song-grid">
-          {Array(4).fill(0).map((_, i) => (
-            <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
-          ))}
-        </div>
-      )}
+      {loading && <LoadingSpinner block label="Loading playlists..." />}
 
       {!loading && playlists.length === 0 && (
         <div

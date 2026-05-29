@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, BarChart3, Clock3, Music2, Target, UserRound, Users } from 'lucide-react'
+import { BarChart3, Clock3, Music2, Target, UserRound, Users } from 'lucide-react'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import type { Profile, RecentlyPlayed, Song } from '@/types'
 
@@ -16,6 +17,14 @@ export default function AdminStatsPage() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [recentPlays, setRecentPlays] = useState<RecentlyPlayed[]>([])
   const [stats, setStats] = useState({ songs: 0, users: 0, requests: 0, pending: 0, artists: 0 })
+
+  const summaryCards = [
+    { label: 'Songs', value: stats.songs, icon: Music2, color: '#3B82F6' },
+    { label: 'Users', value: stats.users, icon: Users, color: '#10B981' },
+    { label: 'Artists', value: stats.artists, icon: UserRound, color: '#8B5CF6' },
+    { label: 'Requests', value: stats.requests, icon: Target, color: '#F59E0B' },
+    { label: 'Pending', value: stats.pending, icon: Clock3, color: '#EF4444' },
+  ] as const
 
   useEffect(() => {
     const check = async () => {
@@ -93,151 +102,95 @@ export default function AdminStatsPage() {
     .slice(0, 5), [recentPlays, users])
 
   if (loading || !authorized) {
-    return (
-      <div className="admin-stats-page">
-        <div className="admin-stats-shell">
-          <div className="admin-stats-skeleton" />
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   return (
-    <div className="admin-stats-page">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0A0A0F; }
-        .admin-stats-page {
-          min-height: 100vh;
-          background: #0A0A0F;
-          color: #F1F5F9;
-          font-family: 'DM Sans', sans-serif;
-        }
-        .admin-stats-shell {
-          max-width: 1320px;
-          margin: 0 auto;
-          padding: 1rem clamp(1rem, 2.4vw, 2rem) 2rem;
-        }
-        .admin-stats-skeleton {
-          height: 240px;
-          border-radius: 1.25rem;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
-          background-size: 200% 100%;
-          animation: shimmer 1.2s linear infinite;
-        }
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
-
-      <div className="admin-stats-shell">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => router.push('/admin')}
-              style={{
-                width: '2.35rem', height: '2.35rem',
-                borderRadius: '0.8rem',
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.04)',
-                color: '#F1F5F9',
-                cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              }}
-              aria-label="Back to admin"
-              title="Back to admin"
-            >
-              <ArrowLeft size={16} />
-            </button>
-            <div>
-              <p style={{ color: '#A78BFA', fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '1.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.55rem' }}>
-                <BarChart3 size={18} /> Stats
-              </p>
-              <p style={{ color: '#64748B', fontSize: '0.82rem', marginTop: '0.15rem' }}>Listener activity and usage breakdown</p>
+    <>
+        <div className="admin-stats-shell">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ color: '#A78BFA', fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '1.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.55rem' }}>
+                  <BarChart3 size={18} /> Stats
+                </p>
+                <p style={{ color: '#64748B', fontSize: '0.82rem', marginTop: '0.15rem' }}>Listener activity and usage breakdown</p>
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            {[
-              { label: 'Songs', value: stats.songs, icon: Music2, color: '#3B82F6' },
-              { label: 'Users', value: stats.users, icon: Users, color: '#10B981' },
-              { label: 'Artists', value: stats.artists, icon: UserRound, color: '#8B5CF6' },
-              { label: 'Requests', value: stats.requests, icon: Target, color: '#F59E0B' },
-              { label: 'Pending', value: stats.pending, icon: Clock3, color: '#EF4444' },
-            ].map(stat => {
-              const StatIcon = stat.icon
-              return (
-                <div key={stat.label} style={{
-                  padding: '0.6rem 0.9rem',
-                  background: '#16161F',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: '0.95rem',
-                  display: 'flex', alignItems: 'center', gap: '0.65rem',
-                }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '0.75rem', background: `${stat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.color }}>
-                    <StatIcon size={17} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1, color: stat.color }}>{stat.value}</p>
-                    <p style={{ color: '#64748B', fontSize: '0.72rem', marginTop: '0.15rem' }}>{stat.label}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1rem',
-        }}>
-          <AnalyticsCard title="Listening Activity" subtitle="Last 7 days" accent="#8B5CF6" footer={`${recentPlays.length} plays`}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.6rem', minHeight: '160px' }}>
-              {listensByDay.map((day) => {
-                const max = Math.max(...listensByDay.map(item => item.value), 1)
-                const height = Math.max(12, Math.round((day.value / max) * 120))
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              {summaryCards.map(stat => {
+                const StatIcon = stat.icon
                 return (
-                  <div key={day.label} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem' }}>
-                    <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: '124px' }}>
-                      <div style={{
-                        width: '100%',
-                        maxWidth: '28px',
-                        height: `${height}px`,
-                        borderRadius: '999px 999px 0.45rem 0.45rem',
-                        background: 'linear-gradient(180deg, #A78BFA, #8B5CF6)',
-                        boxShadow: '0 0 18px rgba(139,92,246,0.2)',
-                      }} />
+                  <div key={stat.label} style={{
+                    padding: '0.6rem 0.9rem',
+                    background: '#16161F',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: '0.95rem',
+                    display: 'flex', alignItems: 'center', gap: '0.65rem',
+                  }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '0.75rem', background: `${stat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.color }}>
+                      <StatIcon size={17} />
                     </div>
-                    <span style={{ color: '#94A3B8', fontSize: '0.72rem' }}>{day.label}</span>
-                    <span style={{ color: '#F1F5F9', fontSize: '0.75rem', fontWeight: 600 }}>{day.value}</span>
+                    <div>
+                      <p style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1, color: stat.color }}>{stat.value}</p>
+                      <p style={{ color: '#64748B', fontSize: '0.72rem', marginTop: '0.15rem' }}>{stat.label}</p>
+                    </div>
                   </div>
                 )
               })}
             </div>
-          </AnalyticsCard>
+          </div>
 
-          <AnalyticsCard title="Top Songs" accent="#60A5FA">
-            <ChartList
-              items={topSongsByPlays.map(song => ({ label: song.title, value: (song.play_count || 0).toLocaleString() }))}
-              accentA="#60A5FA"
-              accentB="#8B5CF6"
-              emptyLabel="No play data yet."
-            />
-          </AnalyticsCard>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1rem',
+          }}>
+            <AnalyticsCard title="Listening Activity" subtitle="Last 7 days" accent="#8B5CF6" footer={`${recentPlays.length} plays`}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.6rem', minHeight: '160px' }}>
+                {listensByDay.map((day) => {
+                  const max = Math.max(...listensByDay.map(item => item.value), 1)
+                  const height = Math.max(12, Math.round((day.value / max) * 120))
+                  return (
+                    <div key={day.label} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem' }}>
+                      <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: '124px' }}>
+                        <div style={{
+                          width: '100%',
+                          maxWidth: '28px',
+                          height: `${height}px`,
+                          borderRadius: '999px 999px 0.45rem 0.45rem',
+                          background: 'linear-gradient(180deg, #A78BFA, #8B5CF6)',
+                          boxShadow: '0 0 18px rgba(139,92,246,0.2)',
+                        }} />
+                      </div>
+                      <span style={{ color: '#94A3B8', fontSize: '0.72rem' }}>{day.label}</span>
+                      <span style={{ color: '#F1F5F9', fontSize: '0.75rem', fontWeight: 600 }}>{day.value}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </AnalyticsCard>
 
-          <AnalyticsCard title="Top Users" accent="#34D399">
-            <ChartList
-              items={topUsersByPlays.map(entry => ({ label: entry.user, value: String(entry.count) }))}
-              accentA="#34D399"
-              accentB="#10B981"
-              emptyLabel="No user play activity yet."
-            />
-          </AnalyticsCard>
+            <AnalyticsCard title="Top Songs" accent="#60A5FA">
+              <ChartList
+                items={topSongsByPlays.map(song => ({ label: song.title, value: (song.play_count || 0).toLocaleString() }))}
+                accentA="#60A5FA"
+                accentB="#8B5CF6"
+                emptyLabel="No play data yet."
+              />
+            </AnalyticsCard>
+
+            <AnalyticsCard title="Top Users" accent="#34D399">
+              <ChartList
+                items={topUsersByPlays.map(entry => ({ label: entry.user, value: String(entry.count) }))}
+                accentA="#34D399"
+                accentB="#10B981"
+                emptyLabel="No user play activity yet."
+              />
+            </AnalyticsCard>
+          </div>
         </div>
-      </div>
-    </div>
+    </>
   )
 }
 

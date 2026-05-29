@@ -175,9 +175,9 @@ export default function Sidebar({ profile }: SidebarProps) {
               margin: '1rem 0',
             }} />
             <Link
-              href="/admin"
+              href="/admin/stats"
               onClick={closeMobile}
-              className="nav-item admin-link"
+              className={`nav-item admin-link${pathname.startsWith('/admin') ? ' active' : ''}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -185,9 +185,10 @@ export default function Sidebar({ profile }: SidebarProps) {
                 padding: '0.65rem 0.85rem',
                 borderRadius: '0.75rem',
                 textDecoration: 'none',
-                color: '#A78BFA',
+                color: pathname.startsWith('/admin') ? '#C4B5FD' : '#A78BFA',
                 fontSize: '0.9rem',
-                fontWeight: 500,
+                fontWeight: pathname.startsWith('/admin') ? 600 : 500,
+                background: pathname.startsWith('/admin') ? 'rgba(168,85,247,0.12)' : 'transparent',
               }}
             >
               <Crown size={16} />

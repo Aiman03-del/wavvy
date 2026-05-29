@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Frown, Music2, PartyPopper, Smile, Target, Wind } from 'lucide-react'
 import SongGrid from '@/components/ui/SongGrid'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import type { Song } from '@/types'
@@ -92,11 +93,7 @@ export default function MoodPage() {
       </div>
 
       {loading ? (
-        <div className="wavvy-song-grid">
-          {Array(6).fill(0).map((_, i) => (
-            <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
-          ))}
-        </div>
+        <LoadingSpinner block label="Loading songs..." />
       ) : songs.length === 0 ? (
         <div style={{ background: '#16161F', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '1.25rem', padding: '3rem', textAlign: 'center' }}>
           <Music2 size={36} color={meta.color} />

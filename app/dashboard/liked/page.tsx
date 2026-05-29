@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Heart, Music2 } from 'lucide-react'
 import SongGrid from '@/components/ui/SongGrid'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import { useMusicStore } from '@/store/musicStore'
 import type { Song } from '@/types'
@@ -62,15 +63,7 @@ export default function LikedPage() {
         </h1>
       </div>
 
-      {loading && (
-        <div className="wavvy-song-grid">
-          {Array(6)
-            .fill(0)
-            .map((_, i) => (
-              <div key={i} className="wavvy-skeleton wavvy-skeleton-card" />
-            ))}
-        </div>
-      )}
+      {loading && <LoadingSpinner block label="Loading liked songs..." />}
 
       {!loading && songs.length === 0 && (
         <div

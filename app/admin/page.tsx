@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
-  BarChart3,
   CheckCircle2,
-  Clock3,
   Crown,
   ExternalLink,
   Frown,
@@ -24,6 +22,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import type { ArtistProfile, Song, Profile } from '@/types'
 
@@ -35,6 +34,21 @@ const TAB_ICONS = {
   artists: UserRound,
   users: Users,
 } as const
+
+const TAB_ROUTES: Record<Tab, string> = {
+  songs: '/admin/songs',
+  requests: '/admin/requests',
+  artists: '/admin/artists',
+  users: '/admin/users',
+}
+
+function getTabFromPathname(pathname: string | null) {
+  if (!pathname) return 'songs'
+  if (pathname.endsWith('/requests')) return 'requests'
+  if (pathname.endsWith('/artists')) return 'artists'
+  if (pathname.endsWith('/users')) return 'users'
+  return 'songs'
+}
 
 const MOOD_ICONS = {
   happy: Smile,
@@ -58,7 +72,8 @@ const GENRES = ['Pop', 'Rock', 'Hip-Hop', 'R&B', 'Electronic', 'Classical', 'Jaz
 
 export default function AdminPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('songs')
+  const pathname = usePathname()
+  const tab = getTabFromPathname(pathname)
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
 
@@ -106,8 +121,8 @@ export default function AdminPage() {
   const [pendingDeleteSongId, setPendingDeleteSongId] = useState<string | null>(null)
   const [pendingRoleUser, setPendingRoleUser] = useState<Profile | null>(null)
 
-  // Stats
-  const [stats, setStats] = useState({ songs: 0, users: 0, requests: 0, pending: 0, artists: 0 })
+  // Pending request count (for filter badge)
+  const [pendingCount, setPendingCount] = useState(0)
 
   // Auth check
   useEffect(() => {
@@ -162,13 +177,9 @@ export default function AdminPage() {
     setRequests(reqData || [])
     setUsers(usersData || [])
     setArtists(artistError ? [] : mergedArtists)
-    setStats({
-      songs: songsData?.length || 0,
-      users: usersData?.length || 0,
-      requests: reqData?.length || 0,
-      pending: reqData?.filter((request: SongRequest) => request.status === 'pending').length || 0,
-      artists: artistError ? 0 : mergedArtists.length,
-    })
+    setPendingCount(
+      reqData?.filter((request: SongRequest) => request.status === 'pending').length || 0
+    )
   }, [])
 
   const clearLyricsNotice = useCallback(() => {
@@ -354,7 +365,7 @@ export default function AdminPage() {
     setLastAutoFilledId('')
     setLastAutoLyricsId('')
     setShowAddSong(true)
-    setTab('songs')
+    router.push(TAB_ROUTES.songs)
   }
 
   const openEditSong = (song: Song) => {
@@ -430,10 +441,9 @@ export default function AdminPage() {
           .eq('id', selectedRequest.id)
         if (!reqErr) {
           setRequests(prev => prev.map(request => request.id === selectedRequest.id ? { ...request, status: 'approved' } : request))
-          setStats(prev => ({
-            ...prev,
-            pending: selectedRequest.status === 'pending' ? Math.max(prev.pending - 1, 0) : prev.pending,
-          }))
+          if (selectedRequest.status === 'pending') {
+            setPendingCount(prev => Math.max(prev - 1, 0))
+          }
         }
       }
 
@@ -463,7 +473,7 @@ export default function AdminPage() {
       image_url: '',
     })
     setShowArtistForm(true)
-    setTab('artists')
+    router.push(TAB_ROUTES.artists)
   }
 
   const openEditArtist = (artist: ArtistProfile) => {
@@ -475,7 +485,7 @@ export default function AdminPage() {
       image_url: artist.image_url || '',
     })
     setShowArtistForm(true)
-    setTab('artists')
+    router.push(TAB_ROUTES.artists)
   }
 
   const generateArtistProfile = async () => {
@@ -628,7 +638,7 @@ export default function AdminPage() {
   const updateRequest = async (id: string, status: 'approved' | 'rejected') => {
     await supabase.from('song_requests').update({ status }).eq('id', id)
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-    setStats(prev => ({ ...prev, pending: Math.max(prev.pending - 1, 0) }))
+    setPendingCount(prev => Math.max(prev - 1, 0))
   }
 
   // ─── Users ────────────────────────────────────────────
@@ -657,20 +667,7 @@ export default function AdminPage() {
 
   // ─── Loading / Auth ───────────────────────────────────
 
-  if (loading || !authorized) return (
-    <div style={{
-      minHeight: '100vh', background: '#0A0A0F',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <div style={{
-        width: '36px', height: '36px',
-        border: '3px solid rgba(59,130,246,0.2)',
-        borderTop: '3px solid #3B82F6',
-        borderRadius: '50%', animation: 'spin 0.8s linear infinite',
-      }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
+  if (loading || !authorized) return <LoadingSpinner fullScreen />
 
   const filteredRequests = requestFilter === 'all'
     ? requests
@@ -707,10 +704,7 @@ export default function AdminPage() {
     : users
 
   return (
-    <div style={{
-      minHeight: '100vh', background: '#0A0A0F',
-      fontFamily: "'DM Sans', sans-serif", color: '#F1F5F9',
-    }}>
+    <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -727,104 +721,7 @@ export default function AdminPage() {
         .modal-anim { animation: slideIn 0.25s ease; }
       `}</style>
 
-      {/* Top Bar */}
-      <div className="wavvy-admin-topbar">
-        <button
-          onClick={() => router.push('/dashboard')}
-          style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0 }}
-        >←</button>
-        <span style={{
-          fontFamily: "'Syne', sans-serif",
-          fontSize: 'clamp(1rem, 3vw, 1.3rem)', fontWeight: 800, color: '#A78BFA',
-          display: 'inline-flex', alignItems: 'center', gap: '0.45rem',
-        }}><Crown size={18} /> Admin Panel</span>
-
-        <div className="wavvy-admin-tabs">
-          {(['songs', 'requests', 'artists', 'users'] as Tab[]).map(t => (
-            <button
-              key={t}
-              className="tab-btn"
-              onClick={() => setTab(t)}
-              style={{
-                padding: '0.45rem 1.1rem',
-                borderRadius: '999px',
-                fontSize: '0.85rem',
-                fontWeight: tab === t ? 600 : 400,
-                background: tab === t ? 'rgba(139,92,246,0.2)' : 'transparent',
-                color: tab === t ? '#A78BFA' : '#94A3B8',
-                border: tab === t ? '1px solid rgba(139,92,246,0.35)' : '1px solid transparent',
-                position: 'relative',
-              }}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-                {(() => {
-                  const TabIcon = TAB_ICONS[t]
-                  return <TabIcon size={14} />
-                })()}
-                {t === 'songs'
-                  ? 'Songs'
-                  : t === 'requests'
-                    ? `Requests${stats.pending > 0 ? ` (${stats.pending})` : ''}`
-                    : t === 'artists'
-                      ? `Artists${stats.artists > 0 ? ` (${stats.artists})` : ''}`
-                      : 'Users'}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={() => router.push('/admin/stats')}
-          className="tab-btn"
-          style={{
-            padding: '0.45rem 1rem',
-            borderRadius: '999px',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            background: 'rgba(59,130,246,0.12)',
-            color: '#60A5FA',
-            border: '1px solid rgba(59,130,246,0.25)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.45rem',
-          }}
-        >
-          <BarChart3 size={14} /> Stats
-        </button>
-      </div>
-
       <div className="wavvy-admin-content">
-
-        {/* Stats Row */}
-        <div className="wavvy-admin-stats">
-          {[
-            { label: 'Total Songs', value: stats.songs, icon: Music2, color: '#3B82F6' },
-            { label: 'Total Users', value: stats.users, icon: Users, color: '#10B981' },
-            { label: 'Artists', value: stats.artists, icon: UserRound, color: '#8B5CF6' },
-            { label: 'Requests', value: stats.requests, icon: Target, color: '#F59E0B' },
-            { label: 'Pending', value: stats.pending, icon: Clock3, color: '#EF4444' },
-          ].map(stat => (
-            <div key={stat.label} style={{
-              background: '#16161F',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '1rem', padding: '1.1rem 1.25rem',
-              display: 'flex', alignItems: 'center', gap: '0.85rem',
-            }}>
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '0.75rem',
-                background: `${stat.color}18`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: stat.color,
-              }}>{(() => { const StatIcon = stat.icon; return <StatIcon size={20} /> })()}</div>
-              <div>
-                <p style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1, color: stat.color }}>
-                  {stat.value}
-                </p>
-                <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '0.2rem' }}>{stat.label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
 
         {/* ── SONGS TAB ─────────────────────────────── */}
         {tab === 'songs' && (
@@ -969,7 +866,7 @@ export default function AdminPage() {
                     textTransform: 'capitalize',
                   }}
                 >
-                  {f} {f === 'pending' && stats.pending > 0 ? `(${stats.pending})` : ''}
+                  {f} {f === 'pending' && pendingCount > 0 ? `(${pendingCount})` : ''}
                 </button>
               ))}
             </div>
@@ -1778,7 +1675,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
