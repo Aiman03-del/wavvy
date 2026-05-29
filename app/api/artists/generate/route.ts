@@ -26,17 +26,59 @@ function cleanArtistName(name: string) {
   return normalizeText(name).replace(/\s*\(.*?\)\s*$/g, '')
 }
 
-function buildImageUrl(name: string, songs: SongRow[], currentImageUrl?: string) {
-  const existing = currentImageUrl?.trim()
-  if (existing) return existing
+function looksLikePlaceholderImage(url: string) {
+  const value = url.trim().toLowerCase()
+  return (
+    value.includes('ui-avatars.com') ||
+    value.includes('img.youtube.com') ||
+    value.includes('placehold.co') ||
+    value.includes('placeholder') ||
+    value.includes('upload.wikimedia.org/wikipedia/commons/thumb/')
+  )
+}
 
-  const songThumbnail = songs.find((song) => song.thumbnail_url)?.thumbnail_url?.trim()
-  if (songThumbnail) return songThumbnail
+async function lookupWikipediaImageUrl(name: string) {
+  const searchUrl = new URL('https://www.wikidata.org/w/api.php')
+  searchUrl.searchParams.set('action', 'wbsearchentities')
+  searchUrl.searchParams.set('search', name)
+  searchUrl.searchParams.set('language', 'en')
+  searchUrl.searchParams.set('type', 'item')
+  searchUrl.searchParams.set('limit', '5')
+  searchUrl.searchParams.set('format', 'json')
+  searchUrl.searchParams.set('origin', '*')
 
-  const youtubeId = songs.find((song) => song.youtube_id)?.youtube_id?.trim()
-  if (youtubeId) {
-    return `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`
+  const searchResponse = await fetch(searchUrl.toString(), { method: 'GET' })
+  if (!searchResponse.ok) return ''
+
+  const searchData = await searchResponse.json() as { search?: Array<{ id?: string; label?: string; description?: string }> }
+  const entityId = searchData.search?.find((entity) => entity.id?.trim())?.id?.trim()
+  if (!entityId) return ''
+
+  const entityUrl = new URL(`https://www.wikidata.org/wiki/Special:EntityData/${encodeURIComponent(entityId)}.json`)
+  entityUrl.searchParams.set('origin', '*')
+
+  const entityResponse = await fetch(entityUrl.toString(), { method: 'GET' })
+  if (!entityResponse.ok) return ''
+
+  const entityData = await entityResponse.json() as {
+    entities?: Record<string, {
+      claims?: Record<string, Array<{ mainsnak?: { datavalue?: { value?: string } } }>>
+    }>
   }
+
+  const entity = entityData.entities?.[entityId]
+  const filename = entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value?.trim()
+  if (!filename) return ''
+
+  return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=512`
+}
+
+async function resolveArtistImageUrl(name: string, songs: SongRow[], currentImageUrl?: string) {
+  const existing = currentImageUrl?.trim()
+  if (existing && !looksLikePlaceholderImage(existing)) return existing
+
+  const wikiImage = await lookupWikipediaImageUrl(name)
+  if (wikiImage) return wikiImage
 
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8B5CF6&color=fff`
 }
@@ -135,7 +177,7 @@ export async function POST(req: Request) {
 
     const songs = songsData || []
 
-    const image_url = buildImageUrl(name, songs, body.image_url || existingArtistData?.image_url || undefined)
+    const image_url = await resolveArtistImageUrl(name, songs, body.image_url || existingArtistData?.image_url || undefined)
     const genre = body.genre?.trim() || existingArtistData?.genre?.trim() || inferGenreFallback(songs)
     const bio = body.bio?.trim() || existingArtistData?.bio?.trim() || inferBioFallback(name, songs)
 
@@ -188,7 +230,7 @@ export async function POST(req: Request) {
               name,
               bio: normalizeText(parsed.bio || bio),
               genre: normalizeText(parsed.genre || genre),
-              image_url: normalizeText(parsed.image_url || image_url),
+              image_url,
               trackCount: songs.length,
               source: 'groq',
             })

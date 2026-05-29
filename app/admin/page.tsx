@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle2,
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import type { ArtistProfile, Song, Profile } from '@/types'
+import type { ArtistProfile, Song, Profile, RecentlyPlayed } from '@/types'
 
 type Tab = 'songs' | 'requests' | 'artists' | 'users'
 
@@ -69,12 +69,15 @@ export default function AdminPage() {
     title: '', artist: '', youtube_id: '', album: '',
     genre: '', mood: '', thumbnail_url: '', lyrics: '',
   })
+  const [songSearch, setSongSearch] = useState('')
   const [savingSong, setSavingSong] = useState(false)
   const [autoFillingSong, setAutoFillingSong] = useState(false)
   const [lastAutoFilledId, setLastAutoFilledId] = useState('')
   const [autoGeneratingLyrics, setAutoGeneratingLyrics] = useState(false)
   const [lastAutoLyricsId, setLastAutoLyricsId] = useState('')
+  const [lyricsNotice, setLyricsNotice] = useState('')
   const [selectedRequest, setSelectedRequest] = useState<SongRequest | null>(null)
+  const lyricsNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Requests state
   const [requests, setRequests] = useState<SongRequest[]>([])
@@ -82,8 +85,10 @@ export default function AdminPage() {
 
   // Artists state
   const [artists, setArtists] = useState<ArtistProfile[]>([])
+  const [artistSearch, setArtistSearch] = useState('')
   const [showArtistForm, setShowArtistForm] = useState(false)
   const [editingArtist, setEditingArtist] = useState<ArtistProfile | null>(null)
+  const [pendingDeleteArtist, setPendingDeleteArtist] = useState<ArtistProfile | null>(null)
   const [artistForm, setArtistForm] = useState({
     name: '',
     bio: '',
@@ -96,6 +101,8 @@ export default function AdminPage() {
 
   // Users state
   const [users, setUsers] = useState<Profile[]>([])
+  const [userSearch, setUserSearch] = useState('')
+  const [recentPlays, setRecentPlays] = useState<RecentlyPlayed[]>([])
   const [pendingDeleteSongId, setPendingDeleteSongId] = useState<string | null>(null)
   const [pendingRoleUser, setPendingRoleUser] = useState<Profile | null>(null)
 
@@ -120,11 +127,13 @@ export default function AdminPage() {
       { data: songsData },
       { data: reqData },
       { data: usersData },
+      { data: recentPlaysData },
       { data: artistData, error: artistError },
     ] = await Promise.all([
       supabase.from('songs').select('*').order('created_at', { ascending: false }),
       supabase.from('song_requests').select('*, profiles(username, email)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabase.from('recently_played').select('id,user_id,song_id,played_at').order('played_at', { ascending: false }).limit(200),
       supabase.from('artist_profiles').select('*').order('created_at', { ascending: false }),
     ])
 
@@ -154,6 +163,7 @@ export default function AdminPage() {
     setSongs(songsData || [])
     setRequests(reqData || [])
     setUsers(usersData || [])
+    setRecentPlays((recentPlaysData || []) as RecentlyPlayed[])
     setArtists(artistError ? [] : mergedArtists)
     setStats({
       songs: songsData?.length || 0,
@@ -162,6 +172,33 @@ export default function AdminPage() {
       pending: reqData?.filter((request: SongRequest) => request.status === 'pending').length || 0,
       artists: artistError ? 0 : mergedArtists.length,
     })
+  }, [])
+
+  const clearLyricsNotice = useCallback(() => {
+    if (lyricsNoticeTimerRef.current) {
+      clearTimeout(lyricsNoticeTimerRef.current)
+      lyricsNoticeTimerRef.current = null
+    }
+    setLyricsNotice('')
+  }, [])
+
+  const showLyricsNotice = useCallback((message: string) => {
+    if (lyricsNoticeTimerRef.current) {
+      clearTimeout(lyricsNoticeTimerRef.current)
+    }
+
+    lyricsNoticeTimerRef.current = setTimeout(() => {
+      setLyricsNotice(message)
+      lyricsNoticeTimerRef.current = null
+    }, 2200)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (lyricsNoticeTimerRef.current) {
+        clearTimeout(lyricsNoticeTimerRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -239,18 +276,25 @@ export default function AdminPage() {
           }),
         })
 
-        if (!res.ok) return
+        if (!res.ok) {
+          showLyricsNotice('Lyrics not found for this song')
+          return
+        }
         const data = await res.json() as { lyrics?: string }
         const lyrics = (data.lyrics || '').trim()
-        if (!lyrics) return
+        if (!lyrics) {
+          showLyricsNotice('Lyrics not found for this song')
+          return
+        }
 
         setSongForm((current) => {
           if (current.lyrics.trim()) return current
           return { ...current, lyrics }
         })
         setLastAutoLyricsId(ytId)
+        clearLyricsNotice()
       } catch {
-        // Keep the form usable if lyric generation fails.
+        showLyricsNotice('Lyrics not found for this song')
       } finally {
         setAutoGeneratingLyrics(false)
       }
@@ -258,19 +302,32 @@ export default function AdminPage() {
 
     return () => clearTimeout(timeout)
   }, [
+    clearLyricsNotice,
     autoGeneratingLyrics,
     lastAutoLyricsId,
+    showLyricsNotice,
     songForm.youtube_id,
     songForm.title,
     songForm.artist,
     songForm.lyrics,
   ])
 
+  useEffect(() => {
+    if (!showAddSong) return
+
+    const timeout = setTimeout(() => {
+      setLyricsNotice('')
+    }, 0)
+
+    return () => clearTimeout(timeout)
+  }, [showAddSong, songForm.youtube_id, songForm.title, songForm.artist, songForm.lyrics])
+
   // ─── Song CRUD ───────────────────────────────────────
 
   const openAddSong = () => {
     setEditingSong(null)
     setSelectedRequest(null)
+    clearLyricsNotice()
     setSongForm({ title: '', artist: '', youtube_id: '', album: '', genre: '', mood: '', thumbnail_url: '', lyrics: '' })
     setLastAutoFilledId('')
     setLastAutoLyricsId('')
@@ -286,6 +343,7 @@ export default function AdminPage() {
 
     setEditingSong(null)
     setSelectedRequest(request)
+    clearLyricsNotice()
     setSongForm({
       title: '',
       artist: '',
@@ -304,6 +362,9 @@ export default function AdminPage() {
 
   const openEditSong = (song: Song) => {
     setEditingSong(song)
+    setAutoGeneratingLyrics(false)
+    setLastAutoLyricsId('')
+    clearLyricsNotice()
     setSongForm({
       title: song.title,
       artist: song.artist,
@@ -382,10 +443,16 @@ export default function AdminPage() {
       toast.success(editingSong ? 'Song updated' : 'Song added')
       setShowAddSong(false)
       setSelectedRequest(null)
+      clearLyricsNotice()
       loadAll()
     } finally {
       setSavingSong(false)
     }
+  }
+
+  const closeSongModal = () => {
+    clearLyricsNotice()
+    setShowAddSong(false)
   }
 
   // ─── Artist CRUD ─────────────────────────────────────
@@ -517,6 +584,32 @@ export default function AdminPage() {
     }
   }
 
+  const deleteArtist = (artist: ArtistProfile) => {
+    setPendingDeleteArtist(artist)
+  }
+
+  const confirmDeleteArtist = async () => {
+    if (!pendingDeleteArtist) return
+
+    const { error } = await supabase
+      .from('artist_profiles')
+      .delete()
+      .eq('id', pendingDeleteArtist.id)
+
+    if (error) {
+      toast.error(error.message || 'Failed to delete artist profile')
+      return
+    }
+
+    toast.success('Artist profile deleted')
+    setPendingDeleteArtist(null)
+    if (editingArtist?.id === pendingDeleteArtist.id) {
+      setShowArtistForm(false)
+      setEditingArtist(null)
+    }
+    loadAll()
+  }
+
   const deleteSong = async (id: string) => {
     setPendingDeleteSongId(id)
   }
@@ -585,6 +678,67 @@ export default function AdminPage() {
   const filteredRequests = requestFilter === 'all'
     ? requests
     : requests.filter(r => r.status === requestFilter)
+
+  const normalizedSongSearch = songSearch.trim().toLowerCase()
+  const normalizedArtistSearch = artistSearch.trim().toLowerCase()
+  const normalizedUserSearch = userSearch.trim().toLowerCase()
+
+  const filteredSongs = normalizedSongSearch
+    ? songs.filter(song => (
+      song.title.toLowerCase().includes(normalizedSongSearch) ||
+      song.artist.toLowerCase().includes(normalizedSongSearch) ||
+      (song.album || '').toLowerCase().includes(normalizedSongSearch) ||
+      (song.genre || '').toLowerCase().includes(normalizedSongSearch) ||
+      (song.mood || '').toLowerCase().includes(normalizedSongSearch)
+    ))
+    : songs
+
+  const filteredArtists = normalizedArtistSearch
+    ? artists.filter(artist => (
+      artist.name.toLowerCase().includes(normalizedArtistSearch) ||
+      (artist.bio || '').toLowerCase().includes(normalizedArtistSearch) ||
+      (artist.genre || '').toLowerCase().includes(normalizedArtistSearch)
+    ))
+    : artists
+
+  const filteredUsers = normalizedUserSearch
+    ? users.filter(user => (
+      (user.username || '').toLowerCase().includes(normalizedUserSearch) ||
+      (user.email || '').toLowerCase().includes(normalizedUserSearch) ||
+      (user.role || '').toLowerCase().includes(normalizedUserSearch)
+    ))
+    : users
+
+  const dayLabels = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (6 - index))
+    return date.toISOString().slice(0, 10)
+  })
+
+  const listensByDay = dayLabels.map((day) => {
+    const count = recentPlays.filter(play => play.played_at.startsWith(day)).length
+    return {
+      label: new Date(`${day}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' }),
+      value: count,
+    }
+  })
+
+  const topSongsByPlays = [...songs]
+    .sort((left, right) => (right.play_count || 0) - (left.play_count || 0))
+    .slice(0, 5)
+
+  const topUsersByPlays = Object.entries(
+    recentPlays.reduce<Record<string, number>>((acc, play) => {
+      acc[play.user_id] = (acc[play.user_id] || 0) + 1
+      return acc
+    }, {})
+  )
+    .map(([userId, count]) => ({
+      user: users.find(user => user.id === userId)?.username || users.find(user => user.id === userId)?.email || 'Unknown user',
+      count,
+    }))
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 5)
 
   return (
     <div style={{
@@ -687,13 +841,129 @@ export default function AdminPage() {
           ))}
         </div>
 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.25rem',
+        }}>
+          <div style={{
+            background: '#16161F',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '1.25rem',
+            padding: '1rem 1rem 1.1rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.9rem' }}>
+              <div>
+                <p style={{ color: '#F1F5F9', fontWeight: 700, fontSize: '0.98rem' }}>Listening Activity</p>
+                <p style={{ color: '#64748B', fontSize: '0.76rem' }}>Last 7 days</p>
+              </div>
+              <span style={{ color: '#8B5CF6', fontSize: '0.74rem', fontWeight: 600 }}>
+                {recentPlays.length} plays
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.6rem', minHeight: '160px' }}>
+              {listensByDay.map((day) => {
+                const max = Math.max(...listensByDay.map(item => item.value), 1)
+                const height = Math.max(12, Math.round((day.value / max) * 120))
+                return (
+                  <div key={day.label} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem' }}>
+                    <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: '124px' }}>
+                      <div style={{
+                        width: '100%',
+                        maxWidth: '28px',
+                        height: `${height}px`,
+                        borderRadius: '999px 999px 0.45rem 0.45rem',
+                        background: 'linear-gradient(180deg, #A78BFA, #8B5CF6)',
+                        boxShadow: '0 0 18px rgba(139,92,246,0.2)',
+                      }} />
+                    </div>
+                    <span style={{ color: '#94A3B8', fontSize: '0.72rem' }}>{day.label}</span>
+                    <span style={{ color: '#F1F5F9', fontSize: '0.75rem', fontWeight: 600 }}>{day.value}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{
+            background: '#16161F',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '1.25rem',
+            padding: '1rem 1rem 1.1rem',
+          }}>
+            <p style={{ color: '#F1F5F9', fontWeight: 700, fontSize: '0.98rem', marginBottom: '0.9rem' }}>Top Songs</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {topSongsByPlays.length === 0 ? (
+                <p style={{ color: '#64748B', fontSize: '0.82rem' }}>No play data yet.</p>
+              ) : topSongsByPlays.map(song => {
+                const max = Math.max(...topSongsByPlays.map(item => item.play_count || 0), 1)
+                const width = Math.max(16, Math.round(((song.play_count || 0) / max) * 100))
+                return (
+                  <div key={song.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem' }}>
+                      <span style={{ color: '#F1F5F9', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                      <span style={{ color: '#8B5CF6', fontSize: '0.75rem', fontWeight: 600 }}>{(song.play_count || 0).toLocaleString()}</span>
+                    </div>
+                    <div style={{ height: '10px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{ width: `${width}%`, height: '100%', borderRadius: 'inherit', background: 'linear-gradient(90deg, #60A5FA, #8B5CF6)' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{
+            background: '#16161F',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '1.25rem',
+            padding: '1rem 1rem 1.1rem',
+          }}>
+            <p style={{ color: '#F1F5F9', fontWeight: 700, fontSize: '0.98rem', marginBottom: '0.9rem' }}>Top Users</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {topUsersByPlays.length === 0 ? (
+                <p style={{ color: '#64748B', fontSize: '0.82rem' }}>No user play activity yet.</p>
+              ) : topUsersByPlays.map(entry => {
+                const max = Math.max(...topUsersByPlays.map(item => item.count), 1)
+                const width = Math.max(16, Math.round((entry.count / max) * 100))
+                return (
+                  <div key={entry.user} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem' }}>
+                      <span style={{ color: '#F1F5F9', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.user}</span>
+                      <span style={{ color: '#34D399', fontSize: '0.75rem', fontWeight: 600 }}>{entry.count}</span>
+                    </div>
+                    <div style={{ height: '10px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{ width: `${width}%`, height: '100%', borderRadius: 'inherit', background: 'linear-gradient(90deg, #34D399, #10B981)' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
         {/* ── SONGS TAB ─────────────────────────────── */}
         {tab === 'songs' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <h2 style={{ fontWeight: 700, fontSize: '1.05rem' }}>
-                All Songs ({songs.length})
+                All Songs ({filteredSongs.length}/{songs.length})
               </h2>
+              <input
+                className="admin-input"
+                value={songSearch}
+                onChange={e => setSongSearch(e.target.value)}
+                placeholder="Search songs..."
+                style={{
+                  ...inputStyle,
+                  maxWidth: '320px',
+                  background: '#16161F',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '0.85rem',
+                  color: '#F1F5F9',
+                }}
+              />
               <button
                 onClick={openAddSong}
                 style={{
@@ -726,11 +996,11 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              {songs.length === 0 ? (
+              {filteredSongs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#475569' }}>
-                  No songs yet. Add your first song!
+                  {songSearch.trim() ? 'No songs match your search.' : 'No songs yet. Add your first song!'}
                 </div>
-              ) : songs.map((song, idx) => (
+              ) : filteredSongs.map((song, idx) => (
                 <div
                   key={song.id}
                   className="row-hover"
@@ -945,8 +1215,22 @@ export default function AdminPage() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <h2 style={{ fontWeight: 700, fontSize: '1.05rem' }}>
-                Artist Profiles ({artists.length})
+                Artist Profiles ({filteredArtists.length}/{artists.length})
               </h2>
+              <input
+                className="admin-input"
+                value={artistSearch}
+                onChange={e => setArtistSearch(e.target.value)}
+                placeholder="Search artists..."
+                style={{
+                  ...inputStyle,
+                  maxWidth: '320px',
+                  background: '#16161F',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '0.85rem',
+                  color: '#F1F5F9',
+                }}
+              />
               <button
                 onClick={openAddArtist}
                 style={{
@@ -978,17 +1262,17 @@ export default function AdminPage() {
                   ))}
                 </div>
 
-                {artists.length === 0 ? (
+                {filteredArtists.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem', color: '#475569' }}>
-                    No artist profiles yet. Add your first artist.
+                    {artistSearch.trim() ? 'No artist profiles match your search.' : 'No artist profiles yet. Add your first artist.'}
                   </div>
-                ) : artists.map((artist, idx) => (
+                ) : filteredArtists.map((artist, idx) => (
                   <div
                     key={artist.id}
                     className="row-hover"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '56px 1.1fr 1.6fr 140px 120px 90px',
+                      gridTemplateColumns: '56px minmax(160px, 1.1fr) minmax(220px, 1.6fr) 140px 120px 104px',
                       padding: '0.7rem 1rem',
                       alignItems: 'center',
                       borderBottom: idx < artists.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
@@ -1014,22 +1298,42 @@ export default function AdminPage() {
                     <span style={{ color: '#475569', fontSize: '0.78rem' }}>
                       {artist.updated_at ? new Date(artist.updated_at).toLocaleDateString() : '—'}
                     </span>
-                    <button
-                      className="icon-btn"
-                      onClick={() => openEditArtist(artist)}
-                      style={{
-                        padding: '0.3rem 0.65rem',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.75rem', fontWeight: 600,
-                        color: '#A78BFA',
-                        border: '1px solid rgba(168,85,247,0.25)',
-                        background: 'rgba(168,85,247,0.08)',
-                      }}
-                    >
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <Pencil size={12} /> Edit
-                      </span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.45rem', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                      <button
+                        className="icon-btn"
+                        onClick={() => openEditArtist(artist)}
+                        title="Edit artist"
+                        aria-label="Edit artist"
+                        style={{
+                          width: '2rem', height: '2rem',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          borderRadius: '0.55rem',
+                          color: '#A78BFA',
+                          border: '1px solid rgba(168,85,247,0.25)',
+                          background: 'rgba(168,85,247,0.08)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        className="icon-btn"
+                        onClick={() => deleteArtist(artist)}
+                        title="Delete artist"
+                        aria-label="Delete artist"
+                        style={{
+                          width: '2rem', height: '2rem',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          borderRadius: '0.55rem',
+                          color: '#F87171',
+                          border: '1px solid rgba(248,113,113,0.25)',
+                          background: 'rgba(248,113,113,0.08)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1040,9 +1344,25 @@ export default function AdminPage() {
         {/* ── USERS TAB ─────────────────────────────── */}
         {tab === 'users' && (
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '1rem' }}>
-              All Users ({users.length})
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.05rem' }}>
+                All Users ({filteredUsers.length}/{users.length})
+              </h2>
+              <input
+                className="admin-input"
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                placeholder="Search users..."
+                style={{
+                  ...inputStyle,
+                  maxWidth: '320px',
+                  background: '#16161F',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '0.85rem',
+                  color: '#F1F5F9',
+                }}
+              />
+            </div>
 
             <div className="wavvy-table-scroll" style={{
               background: '#16161F',
@@ -1063,7 +1383,11 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              {users.map((user, idx) => (
+              {filteredUsers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#475569' }}>
+                  {userSearch.trim() ? 'No users match your search.' : 'No users yet.'}
+                </div>
+              ) : filteredUsers.map((user, idx) => (
                 <div
                   key={user.id}
                   className="row-hover"
@@ -1274,12 +1598,17 @@ export default function AdminPage() {
                     Generating lyrics…
                   </p>
                 )}
+                {lyricsNotice && !autoGeneratingLyrics && (
+                  <p style={{ color: '#F87171', fontSize: '0.78rem', marginTop: '0.45rem' }}>
+                    {lyricsNotice}
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
-                  onClick={() => setShowAddSong(false)}
+                  onClick={closeSongModal}
                   style={{
                     flex: 1, padding: '0.8rem',
                     background: 'transparent',
@@ -1483,11 +1812,12 @@ export default function AdminPage() {
         </div>
       )}
 
-      {(pendingDeleteSongId || pendingRoleUser) && (
+      {(pendingDeleteSongId || pendingRoleUser || pendingDeleteArtist) && (
         <div
           onClick={() => {
             setPendingDeleteSongId(null)
             setPendingRoleUser(null)
+            setPendingDeleteArtist(null)
           }}
           style={{
             position: 'fixed',
@@ -1514,11 +1844,13 @@ export default function AdminPage() {
             }}
           >
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
-              {pendingDeleteSongId ? 'Delete Song?' : 'Change User Role?'}
+              {pendingDeleteSongId ? 'Delete Song?' : pendingDeleteArtist ? 'Delete Artist?' : 'Change User Role?'}
             </h3>
             <p style={{ margin: '0.5rem 0 0', color: '#94A3B8', fontSize: '0.85rem' }}>
               {pendingDeleteSongId
                 ? 'This action cannot be undone.'
+                : pendingDeleteArtist
+                  ? `Delete ${pendingDeleteArtist.name}? This action cannot be undone.`
                 : `Make ${pendingRoleUser?.username} ${
                     pendingRoleUser?.role === 'admin' ? 'a regular user' : 'an admin'
                   }?`}
@@ -1529,6 +1861,7 @@ export default function AdminPage() {
                 onClick={() => {
                   setPendingDeleteSongId(null)
                   setPendingRoleUser(null)
+                  setPendingDeleteArtist(null)
                 }}
                 style={{
                   flex: 1,
@@ -1544,13 +1877,13 @@ export default function AdminPage() {
               </button>
               <button
                 type="button"
-                onClick={pendingDeleteSongId ? confirmDeleteSong : confirmToggleRole}
+                onClick={pendingDeleteSongId ? confirmDeleteSong : pendingDeleteArtist ? confirmDeleteArtist : confirmToggleRole}
                 style={{
                   flex: 1,
                   padding: '0.65rem',
                   borderRadius: '0.7rem',
                   border: 'none',
-                  background: pendingDeleteSongId ? '#EF4444' : '#8B5CF6',
+                  background: pendingDeleteSongId || pendingDeleteArtist ? '#EF4444' : '#8B5CF6',
                   color: '#fff',
                   fontWeight: 600,
                   cursor: 'pointer',
