@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  BarChart3,
   CheckCircle2,
   Clock3,
   Crown,
@@ -24,7 +25,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import type { ArtistProfile, Song, Profile, RecentlyPlayed } from '@/types'
+import type { ArtistProfile, Song, Profile } from '@/types'
 
 type Tab = 'songs' | 'requests' | 'artists' | 'users'
 
@@ -102,7 +103,6 @@ export default function AdminPage() {
   // Users state
   const [users, setUsers] = useState<Profile[]>([])
   const [userSearch, setUserSearch] = useState('')
-  const [recentPlays, setRecentPlays] = useState<RecentlyPlayed[]>([])
   const [pendingDeleteSongId, setPendingDeleteSongId] = useState<string | null>(null)
   const [pendingRoleUser, setPendingRoleUser] = useState<Profile | null>(null)
 
@@ -127,13 +127,11 @@ export default function AdminPage() {
       { data: songsData },
       { data: reqData },
       { data: usersData },
-      { data: recentPlaysData },
       { data: artistData, error: artistError },
     ] = await Promise.all([
       supabase.from('songs').select('*').order('created_at', { ascending: false }),
       supabase.from('song_requests').select('*, profiles(username, email)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-      supabase.from('recently_played').select('id,user_id,song_id,played_at').order('played_at', { ascending: false }).limit(200),
       supabase.from('artist_profiles').select('*').order('created_at', { ascending: false }),
     ])
 
@@ -163,7 +161,6 @@ export default function AdminPage() {
     setSongs(songsData || [])
     setRequests(reqData || [])
     setUsers(usersData || [])
-    setRecentPlays((recentPlaysData || []) as RecentlyPlayed[])
     setArtists(artistError ? [] : mergedArtists)
     setStats({
       songs: songsData?.length || 0,
@@ -709,37 +706,6 @@ export default function AdminPage() {
     ))
     : users
 
-  const dayLabels = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (6 - index))
-    return date.toISOString().slice(0, 10)
-  })
-
-  const listensByDay = dayLabels.map((day) => {
-    const count = recentPlays.filter(play => play.played_at.startsWith(day)).length
-    return {
-      label: new Date(`${day}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' }),
-      value: count,
-    }
-  })
-
-  const topSongsByPlays = [...songs]
-    .sort((left, right) => (right.play_count || 0) - (left.play_count || 0))
-    .slice(0, 5)
-
-  const topUsersByPlays = Object.entries(
-    recentPlays.reduce<Record<string, number>>((acc, play) => {
-      acc[play.user_id] = (acc[play.user_id] || 0) + 1
-      return acc
-    }, {})
-  )
-    .map(([userId, count]) => ({
-      user: users.find(user => user.id === userId)?.username || users.find(user => user.id === userId)?.email || 'Unknown user',
-      count,
-    }))
-    .sort((left, right) => right.count - left.count)
-    .slice(0, 5)
-
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0A0F',
@@ -806,6 +772,25 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={() => router.push('/admin/stats')}
+          className="tab-btn"
+          style={{
+            padding: '0.45rem 1rem',
+            borderRadius: '999px',
+            fontSize: '0.85rem',
+            fontWeight: 500,
+            background: 'rgba(59,130,246,0.12)',
+            color: '#60A5FA',
+            border: '1px solid rgba(59,130,246,0.25)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+          }}
+        >
+          <BarChart3 size={14} /> Stats
+        </button>
       </div>
 
       <div className="wavvy-admin-content">
@@ -839,108 +824,6 @@ export default function AdminPage() {
               </div>
             </div>
           ))}
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1rem',
-          marginBottom: '1.25rem',
-        }}>
-          <div style={{
-            background: '#16161F',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '1.25rem',
-            padding: '1rem 1rem 1.1rem',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.9rem' }}>
-              <div>
-                <p style={{ color: '#F1F5F9', fontWeight: 700, fontSize: '0.98rem' }}>Listening Activity</p>
-                <p style={{ color: '#64748B', fontSize: '0.76rem' }}>Last 7 days</p>
-              </div>
-              <span style={{ color: '#8B5CF6', fontSize: '0.74rem', fontWeight: 600 }}>
-                {recentPlays.length} plays
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.6rem', minHeight: '160px' }}>
-              {listensByDay.map((day) => {
-                const max = Math.max(...listensByDay.map(item => item.value), 1)
-                const height = Math.max(12, Math.round((day.value / max) * 120))
-                return (
-                  <div key={day.label} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem' }}>
-                    <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minHeight: '124px' }}>
-                      <div style={{
-                        width: '100%',
-                        maxWidth: '28px',
-                        height: `${height}px`,
-                        borderRadius: '999px 999px 0.45rem 0.45rem',
-                        background: 'linear-gradient(180deg, #A78BFA, #8B5CF6)',
-                        boxShadow: '0 0 18px rgba(139,92,246,0.2)',
-                      }} />
-                    </div>
-                    <span style={{ color: '#94A3B8', fontSize: '0.72rem' }}>{day.label}</span>
-                    <span style={{ color: '#F1F5F9', fontSize: '0.75rem', fontWeight: 600 }}>{day.value}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div style={{
-            background: '#16161F',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '1.25rem',
-            padding: '1rem 1rem 1.1rem',
-          }}>
-            <p style={{ color: '#F1F5F9', fontWeight: 700, fontSize: '0.98rem', marginBottom: '0.9rem' }}>Top Songs</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {topSongsByPlays.length === 0 ? (
-                <p style={{ color: '#64748B', fontSize: '0.82rem' }}>No play data yet.</p>
-              ) : topSongsByPlays.map(song => {
-                const max = Math.max(...topSongsByPlays.map(item => item.play_count || 0), 1)
-                const width = Math.max(16, Math.round(((song.play_count || 0) / max) * 100))
-                return (
-                  <div key={song.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem' }}>
-                      <span style={{ color: '#F1F5F9', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
-                      <span style={{ color: '#8B5CF6', fontSize: '0.75rem', fontWeight: 600 }}>{(song.play_count || 0).toLocaleString()}</span>
-                    </div>
-                    <div style={{ height: '10px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                      <div style={{ width: `${width}%`, height: '100%', borderRadius: 'inherit', background: 'linear-gradient(90deg, #60A5FA, #8B5CF6)' }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div style={{
-            background: '#16161F',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '1.25rem',
-            padding: '1rem 1rem 1.1rem',
-          }}>
-            <p style={{ color: '#F1F5F9', fontWeight: 700, fontSize: '0.98rem', marginBottom: '0.9rem' }}>Top Users</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {topUsersByPlays.length === 0 ? (
-                <p style={{ color: '#64748B', fontSize: '0.82rem' }}>No user play activity yet.</p>
-              ) : topUsersByPlays.map(entry => {
-                const max = Math.max(...topUsersByPlays.map(item => item.count), 1)
-                const width = Math.max(16, Math.round((entry.count / max) * 100))
-                return (
-                  <div key={entry.user} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem' }}>
-                      <span style={{ color: '#F1F5F9', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.user}</span>
-                      <span style={{ color: '#34D399', fontSize: '0.75rem', fontWeight: 600 }}>{entry.count}</span>
-                    </div>
-                    <div style={{ height: '10px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                      <div style={{ width: `${width}%`, height: '100%', borderRadius: 'inherit', background: 'linear-gradient(90deg, #34D399, #10B981)' }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
         </div>
 
         {/* ── SONGS TAB ─────────────────────────────── */}
