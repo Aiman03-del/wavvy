@@ -1,271 +1,159 @@
-# Wavvy
+# Wavvy — Complete A–Z Guide (English)
 
-Wavvy is a modern music streaming web app built with Next.js, Supabase, Zustand, GSAP, and custom CSS styling. It includes user authentication, music browsing, search, mood-based discovery, playlists, requests, liked songs, admin tools, and a persistent player experience.
+This README replaces the previous summary with a complete, step-by-step guide so you can set up, develop, and deploy this app from A to Z. It covers prerequisites, environment variables, Supabase setup (database + storage), local development, deployment, security, and troubleshooting.
 
-## What This App Does
+Important: this repository contains a `.env.local` file. Never commit real secrets to a public repository. Use the template below and keep secrets in your hosting provider's environment settings.
 
-- Browse the music catalog from the home dashboard.
-- Search songs by title, artist, album, genre, and mood.
-- Explore curated song lists through mood pages.
-- Support likes, playlists, request flow, and recently played history.
-- Control playback through both the fullscreen player and the bottom mini player.
-- Let admin users manage songs, requests, and user roles.
+Quick checklist: Node.js (LTS), npm/pnpm/yarn, Git, Supabase project, (optional) Vercel account.
 
-## Main Features
+## 1) Prerequisites
 
-### 1. Authentication
+- Node.js (LTS, e.g. 18+)
+- npm, pnpm, or yarn
+- Git
+- Supabase account and project
+- (Optional) Vercel account for deployment
 
-- Sign in with email and password.
-- Register a new account with username, email, and password.
-- Redirect authenticated users to the dashboard from the login and register pages.
-- Protect routes such as `/dashboard` and `/admin` with a request proxy guard.
+## 2) Clone and install
 
-### 2. Music Discovery
+1. Clone the repository and enter the folder:
 
-- Show recently played songs on the dashboard.
-- Browse the full catalog from the all songs section.
-- Filter search by query, genre, and mood.
-- Show mood pages for `happy`, `sad`, `chill`, `party`, and `focus`.
-- Highlight the app's main features on the landing page.
+```bash
+git clone <your-repo-url>
+cd wavvy
+```
 
-### 3. Playback Experience
+2. Install dependencies:
 
-- Click any song card once to start playing.
-- Use the mini player to see the current track and open fullscreen mode.
-- Playback controls include play/pause, previous, next, shuffle, and repeat.
-- Progress tracking, seek support, volume storage, and session hydration are included.
-- The fullscreen player shows current art, title, artist, album, playlist actions, and like actions.
+```bash
+npm install
+# or
+# pnpm install
+# yarn install
+```
 
-### 4. Library and Social Actions
+## 3) Environment variables (`.env.local` template)
 
-- View the current user's liked songs.
-- Like and unlike songs from song cards.
-- Create new playlists from the playlist page.
-- Add the current song to a playlist from the fullscreen player.
-- Submit new song requests with a YouTube URL.
+Create a `.env.local` in the project root and populate the following values (replace placeholders with your real keys):
 
-### 5. Admin Tools
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<your-supabase-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=public-anon-key-placeholder
+SUPABASE_SERVICE_ROLE_KEY=service-role-key-placeholder
+GEMINI_API_KEY=your_gemini_or_google_api_key
+RESEND_API_KEY=your_resend_api_key
+ADMIN_EMAIL=you@example.com
+RAPIDAPI_KEY=your_rapidapi_key
+NEXT_PUBLIC_APP_URL=https://your-app-url.vercel.app
+GROQ_API_KEY=your_groq_api_key
+# Optional
+GROQ_LYRICS_MODEL=llama-3.1-8b-instant
+```
 
-- Manage songs from the admin panel.
-- Approve or reject song requests.
-- View users and update roles.
-- Create, edit, and delete songs.
-- Auto-fill song metadata from YouTube oEmbed when possible.
+Notes:
+- Any env starting with `NEXT_PUBLIC_` is exposed to the browser. Keep only public keys there.
+- `SUPABASE_SERVICE_ROLE_KEY` must never be exposed to the client. Keep it server-side only (API routes, server functions).
 
-## Pages
+## 4) Supabase setup (Database + Storage)
 
-### Public Pages
+1. Create a Supabase project.
+2. Create the database tables. At minimum you should have:
 
-#### `/`
-Landing page with brand intro, animated music notes, hero CTA, and feature cards. It includes Login and Get Started links.
+- `profiles` (id, email, username, role)
+- `songs` (id, title, artist_id, youtube_url, duration, artwork_url, mood, genre, play_count, ...)
+- `artist_profiles` (id, name, image_url, ...)
+- `recently_played` (id, profile_id, song_id, played_at)
+- `liked_songs` (id, profile_id, song_id, created_at)
+- `playlists` (id, profile_id, title, created_at)
+- `playlist_songs` (id, playlist_id, song_id, position)
+- `song_requests` (id, profile_id, youtube_url, note, status, admin_note, created_at)
 
-#### `/login`
-Public alias page that redirects to `/auth/login`.
+3. Storage: create a public bucket for artist images or song artwork (e.g., `artist-images`) and set appropriate permissions/CORS so images load from your site.
+4. Enable Email/Password auth in Supabase Auth.
 
-#### `/register`
-Public alias page that redirects to `/auth/register`.
+If this repository includes `supabase/*.sql` migration files, run them in the Supabase SQL editor to create the schema.
 
-### Auth Pages
+## 5) Important files and project layout
 
-#### `/auth/login`
-- Email and password login form
-- Password visibility toggle
-- Error handling
-- Redirect to `/dashboard` after successful sign in
+- `app/` — Next.js app routes, pages, and layouts
+- `app/api/` — server-side routes (e.g., `app/api/get-audio/route.ts`)
+- `components/` — UI components and the player
+- `lib/supabase.ts` — Supabase client initialization
+- `store/musicStore.ts` — Zustand player store
+- `public/` — static assets (images, loader JSON)
+- `supabase/` — SQL files and DB helpers
 
-#### `/auth/register`
-- Username, email, and password form
-- Password minimum length validation
-- Supabase sign-up flow
-- Email redirect configuration
-- Automatic redirect after successful registration
+Explore these files when customizing behavior or adding features.
 
-### Dashboard Pages
+## 6) Run locally
 
-#### `/dashboard`
-Main home dashboard.
-
-This page includes:
-- Greeting based on the time of day
-- Profile greeting
-- Recently Played section
-- All Songs section
-- Empty state when the catalog is empty
-- SongGrid with full click-to-play behavior
-
-#### `/dashboard/search`
-Smart search page.
-
-This page includes:
-- Search input
-- Genre filter
-- Mood filter
-- Debounced auto-search
-- Trending songs on mount
-- Empty state when nothing matches
-
-#### `/dashboard/library`
-Library placeholder page.
-
-This page currently includes:
-- Placeholder state for saved albums, artists, and collections
-- Search the catalog CTA
-
-#### `/dashboard/liked`
-Liked songs page.
-
-This page includes:
-- The current user's liked songs loaded from `liked_songs`
-- Empty state when nothing is liked
-- SongGrid playback support
-- A recently liked catalog view
-
-#### `/dashboard/playlists`
-Playlists overview page.
-
-This page includes:
-- Existing playlists list
-- New playlist creation form
-- Song count per playlist
-- Preview of a few song titles
-- Empty state when no playlist exists
-
-#### `/dashboard/request`
-Song request page.
-
-This page includes:
-- YouTube URL input
-- Optional note field
-- Request submission flow
-- Current user's request history
-- Status badges for pending, approved, and rejected requests
-
-#### `/dashboard/mood/[mood]`
-Mood-based song discovery page.
-
-Supported moods:
-- happy
-- sad
-- chill
-- party
-- focus
-
-This page includes:
-- Mood header with icon and color
-- Mood-specific song list ordered by play count
-- Empty state when no songs match
-- Fallback view when the mood is invalid
-
-#### `/dashboard/dashboard/search`
-Legacy alias route that re-exports `/dashboard/search`.
-
-### Admin Pages
-
-#### `/admin`
-Admin dashboard.
-
-This page includes:
-- Songs tab
-- Requests tab
-- Users tab
-- Add song modal and form
-- Edit song flow
-- Delete confirmation flow
-- Song request approval flow
-- Role management flow
-- Stats cards for songs, users, requests, and pending requests
-- Auto-fill from YouTube oEmbed when possible
-
-## Player UI
-
-### Mini Player
-
-The bottom player bar shows:
-- Current song thumbnail
-- Song title and artist
-- Expand/fullscreen button
-- Playback controls
-
-### Fullscreen Player
-
-Fullscreen mode shows:
-- Large album art
-- Current song title, artist, and album
-- Progress bar
-- Shuffle, previous, play/pause, next, and repeat controls
-- Add to playlist icon on the left side of the controls row
-- Like icon on the right side of the controls row
-- Playlist modal with playlist creation and song add flow
-
-### Song Cards
-
-Song cards across the dashboard, search, liked songs, mood pages, and recent sections support:
-- Clicking anywhere on the card to play
-- Like button
-- Active state styling
-- Play badge for the current track
-- Play count label where enabled
-
-## Data and State
-
-- Supabase handles authentication and database access.
-- Zustand stores player state: current song, queue, history, shuffle, repeat, volume, progress, and fullscreen mode.
-- Local storage persists the last session playback state.
-- The app uses these key data tables: `recently_played`, `liked_songs`, `playlists`, `playlist_songs`, `song_requests`, `profiles`, `artist_profiles`, and `songs`.
-- Artist profile images are stored in the public Supabase Storage bucket `artist-images`.
-
-## Route Guarding
-
-- `/dashboard` and `/admin` are protected through `proxy.ts`.
-- Anonymous users are redirected to `/auth/login`.
-- Non-admin users are redirected away from `/admin`.
-- Authenticated users are redirected away from auth pages to `/dashboard`.
-
-## Tech Stack
-
-- Next.js 16
-- React 19
-- TypeScript
-- Supabase
-- Zustand
-- GSAP
-- Lucide React
-- Sonner
-
-## Development
-
-### Scripts
+1. Ensure `.env.local` is populated.
+2. Start the dev server:
 
 ```bash
 npm run dev
-npm run build
-npm run start
-npm run lint
+# or
+# pnpm dev
+# yarn dev
 ```
 
-### Local Setup
+3. Open `http://localhost:3000`.
 
-1. Install dependencies.
-2. Add your Supabase environment values in `.env.local`.
-3. Run `npm run dev`.
-4. Open `http://localhost:3000`.
+## 7) Core features (how they are implemented)
 
-### Notes
+- Authentication: handled via Supabase client in `lib/supabase.ts` and enforced in layouts under `app/auth`.
+- Player state: stored in `store/musicStore.ts` (Zustand) for current song, queue, history, shuffle/repeat, progress, and volume (with localStorage hydration).
+- API: server logic lives under `app/api/*/route.ts`. Example: `get-audio` fetches and serves audio data from a YouTube URL or other sources.
+- Admin: `/admin` area is protected by role checks; admin pages allow creating/editing songs and approving requests.
 
-- The project uses a root `app/` directory.
-- `next.config.ts` pins the Turbopack root to avoid workspace root ambiguity when multiple lockfiles exist.
-- Some pages, such as Library, are intentionally placeholder-style and can be expanded later.
-- AI lyrics generation (fullscreen player) uses Groq. Set `GROQ_API_KEY` in `.env.local`. Optionally set `GROQ_LYRICS_MODEL` (default: `llama-3.1-8b-instant`).
+## 8) Song request flow
 
-## Folder Overview
+- Users submit YouTube URLs from `dashboard/request` which creates a `song_requests` record.
+- Admins review requests in `/admin` and can approve to move metadata into `songs` (oEmbed data can be used to autofill metadata).
 
-- `app/` - routes, pages, layouts, and route guards
-- `components/` - reusable UI and player components
-- `lib/` - Supabase helpers, player helpers, and utilities
-- `store/` - Zustand player store and middleware
-- `types/` - shared TypeScript types
-- `public/` - static assets
+## 9) Deployment (Vercel) A–Z
 
-## Summary
+1. Connect your Git repository to Vercel and create a new project.
+2. Add the environment variables in the Vercel dashboard (do not commit them to Git).
+3. Build command: `npm run build` (Next.js default settings apply).
+4. Deploy and verify `NEXT_PUBLIC_APP_URL` and Open Graph images.
 
-Wavvy is currently a complete music app shell with real auth, browsing, search, mood discovery, likes, playlists, requests, admin workflows, and a persistent player. The key user journeys are already wired end to end, and this README now reflects the site as it exists today.
+## 10) Security best practices
+
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` in client code.
+- Ensure `.env.local` is in `.gitignore`.
+- Use Row-Level Security (RLS) policies in Supabase and restrict writes to server-side endpoints where appropriate.
+
+## 11) Debugging tips
+
+- Check browser network logs and Supabase logs if auth or DB calls fail.
+- Inspect `app/api/get-audio/route.ts` for audio processing issues.
+- Use `console.log` while developing but remove verbose logging in production.
+
+## 12) Customization ideas
+
+- Add new moods by updating `songs.mood` values and UI filters.
+- Add playlist sharing by generating share tokens and public playlist endpoints.
+- Integrate live streaming with WebRTC or a media server for broadcast features.
+
+## 13) Contributing & workflow
+
+- Create feature branches: `git checkout -b feat/your-feature`
+- Run linting and formatting: `npm run lint`
+- Open a pull request and use Vercel preview deployments for testing.
+
+## 14) Useful resources
+
+- Supabase Docs: https://supabase.com/docs
+- Next.js Docs: https://nextjs.org/docs
+
+---
+
+Would you like me to also:
+
+1. Create a `.env.local.example` file you can fill in locally? (recommended)
+2. Prepare a copyable set of Vercel environment variable values for the dashboard? (I can format them for easy paste)
+
+Reply with `1`, `2`, or `1 and 2` and I'll add the files and configuration next.
+
+
