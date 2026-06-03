@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { gsap } from 'gsap'
-import { Eye, EyeOff, Music2 } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import WavvyLogo from '@/components/ui/WavvyLogo'
 
@@ -17,9 +17,28 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isDuplicate, setIsDuplicate] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [requiresConfirmation, setRequiresConfirmation] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
+
+  const getInboxLink = (email: string) => {
+    try {
+      const domain = email.split('@')[1]?.toLowerCase() || ''
+      if (domain.includes('gmail.com')) return 'https://mail.google.com/mail/u/0/#inbox'
+      if (domain.includes('outlook.com') || domain.includes('hotmail.com') || domain.includes('live.com')) return 'https://outlook.live.com/mail/'
+      if (domain.includes('yahoo.com')) return 'https://mail.yahoo.com/'
+      if (domain.includes('icloud.com') || domain.includes('me.com')) return 'https://www.icloud.com/mail'
+      if (domain.includes('yandex')) return 'https://mail.yandex.com/'
+      if (domain.includes('protonmail')) return 'https://mail.proton.me/'
+      // fallback to mailto which opens the user's default mail client
+      return `mailto:${email}`
+    } catch (e) {
+      return `mailto:${email}`
+    }
+  }
 
   useEffect(() => {
     gsap.fromTo(
@@ -44,17 +63,33 @@ export default function RegisterPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${appUrl}/auth/login`,
+        // redirect users to the live site root after they confirm their email
+        emailRedirectTo: `${appUrl}`,
         data: { username },
       },
     })
 
     if (error) {
-      setError(error.message)
+      // Map common Supabase messages to friendly Bangla messages
+      const msg = (error.message || '').toString()
+      const isAlready = /user already registered|already registered|duplicate/i.test(msg)
+      if (isAlready) {
+        setError('এই ইমেইল দিয়ে একটি একাউন্ট ইতিমধ্যেই তৈরি করা আছে। লগইন করুন অথবা পাসওয়ার্ড ভুলে গেলে পুনরুদ্ধার করুন।')
+        setIsDuplicate(true)
+      } else {
+        setError(msg)
+        setIsDuplicate(false)
+      }
       setLoading(false)
       return
     }
 
+    // Determine if email confirmation is required
+    const emailConfirmed = (data?.user as any)?.email_confirmed_at || (data?.user as any)?.confirmed_at
+    if (!emailConfirmed) {
+      setRequiresConfirmation(true)
+      setRegisteredEmail(email)
+    }
     // Update username in profiles
     if (data.user) {
       await supabase
@@ -66,10 +101,12 @@ export default function RegisterPage() {
     setSuccess(true)
     setLoading(false)
 
-    // Auto redirect after 2s if email confirm disabled
-    setTimeout(() => {
-      router.push('/dashboard')
-    }, 2000)
+    // If email is already confirmed (no confirmation step), redirect after short delay
+    if (emailConfirmed) {
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 1200)
+    }
   }
 
   return (
@@ -170,21 +207,73 @@ export default function RegisterPage() {
         </div>
 
         {success ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '1.5rem',
-            background: 'rgba(34,197,94,0.1)',
-            border: '1px solid rgba(34,197,94,0.3)',
-            borderRadius: '1rem',
-          }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', color: '#86EFAC' }}>
-              <Music2 size={36} />
+          requiresConfirmation ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '1.5rem',
+              background: 'rgba(59,130,246,0.06)',
+              border: '1px solid rgba(59,130,246,0.12)',
+              borderRadius: '1rem',
+            }}>
+              <div style={{ height: 6, width: 64, margin: '0 auto 0.6rem', borderRadius: 999, background: '#60A5FA' }} />
+              <p style={{ color: '#60A5FA', fontWeight: 700 }}>Almost there — check your email</p>
+              <p style={{ color: '#94A3B8', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                We've sent a confirmation link to <strong style={{ color: '#E6EDF3' }}>{registeredEmail}</strong>.
+                Please open the email and click the link to activate your account.
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12 }}>
+                <a
+                  href={getInboxLink(registeredEmail)}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    background: '#111827',
+                    color: '#E6EDF3',
+                    padding: '0.5rem 0.9rem',
+                    borderRadius: 8,
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    border: '1px solid rgba(255,255,255,0.04)'
+                  }}
+                >
+                  Open inbox
+                </a>
+                <a
+                  href="/auth/login"
+                  style={{
+                    background: 'transparent',
+                    color: '#94A3B8',
+                    padding: '0.5rem 0.9rem',
+                    borderRadius: 8,
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    border: '1px solid rgba(255,255,255,0.04)'
+                  }}
+                >
+                  Go to login
+                </a>
+              </div>
+              <p style={{ color: '#94A3B8', fontSize: '0.82rem', marginTop: '0.6rem' }}>
+                After confirming, you'll be redirected to the site home.
+              </p>
             </div>
-            <p style={{ color: '#86EFAC', fontWeight: 600 }}>Account created!</p>
-            <p style={{ color: '#94A3B8', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-              Redirecting you to your account...
-            </p>
-          </div>
+          ) : (
+            <div style={{
+              textAlign: 'center',
+              padding: '1.5rem',
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              borderRadius: '1rem',
+            }}>
+              <div style={{ height: 6, width: 64, margin: '0 auto 0.6rem', borderRadius: 999, background: '#86EFAC' }} />
+              <p style={{ color: '#86EFAC', fontWeight: 600 }}>Account created!</p>
+              <p style={{ color: '#94A3B8', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                Redirecting you to your account...
+              </p>
+            </div>
+          )
         ) : (
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
@@ -249,7 +338,17 @@ export default function RegisterPage() {
                 color: '#FCA5A5',
                 fontSize: '0.85rem',
               }}>
-                {error}
+                  <div style={{ marginBottom: isDuplicate ? 8 : 0 }}>{error}</div>
+                  {isDuplicate && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Link href="/auth/login" style={{ color: '#fff', background: '#3B82F6', padding: '6px 10px', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
+                        লগইন করুন
+                      </Link>
+                      <a href={`mailto:support@wavvy-five.vercel.app?subject=Password%20reset%20help&body=I%20need%20help%20resetting%20my%20password%20for%20${encodeURIComponent(email)}`} style={{ color: '#fff', background: '#6B7280', padding: '6px 10px', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
+                        পাসওয়ার্ড রিকোভারির জন্য লিখুন
+                      </a>
+                    </div>
+                  )}
               </div>
             )}
 

@@ -111,6 +111,93 @@ npm run dev
 - Users submit YouTube URLs from `dashboard/request` which creates a `song_requests` record.
 - Admins review requests in `/admin` and can approve to move metadata into `songs` (oEmbed data can be used to autofill metadata).
 
+## 8.1) Add Song (Admin) — Implementation Details
+
+This section explains the end-to-end Add Song flow (UI → client → server → DB → storage), security, edge cases, and a sample server flow.
+
+- User flow:
+	- Admin opens the Add Song modal or page and fills fields: `title`, `artist` (select or new), `album` (optional), `youtube_url`, `genre`, `mood`, `duration` (optional), and `artwork` (upload or auto-fetch).
+	- Client validates required fields, URL format (YouTube), and file types/sizes for artwork and shows immediate UI errors.
+
+- Client → API:
+	- Client sends a POST to a server endpoint (e.g. `POST /api/admin/songs`) using JSON or `multipart/form-data` for uploads.
+	- Never send the service role key from the client.
+
+- Server flow (detailed):
+	1. Authenticate & authorize: verify the requester is an admin server-side (do not trust client-provided role flags).
+	2. Validate input: required fields, sanitize text, parse YouTube video id.
+	3. Metadata enrichment: optionally call YouTube oEmbed to fetch title, thumbnail, author, duration if missing.
+	4. Storage (artwork):
+		 - If the admin uploaded an image, upload to Supabase Storage server-side with the `SUPABASE_SERVICE_ROLE_KEY` into a public bucket (e.g., `artist-images`) and get a public URL.
+		 - If using a remote thumbnail, fetch and save it to Storage server-side to ensure permanent availability.
+	5. Database writes:
+		 - Upsert artist into `artist_profiles` if new.
+		 - Insert a `songs` row with `title`, `artist_id`, `youtube_url`, `artwork_url`, `genre`, `mood`, `duration`, `created_by`.
+		 - Use service-role privileges server-side or a privileged function to bypass RLS for admin writes.
+	6. Post-write actions: invalidate caches or revalidate Next.js pages, enqueue background jobs (waveform, thumbnail processing), and log the action.
+	7. Response: return `201 Created` with the created song object (or minimal object and let client fetch details).
+
+- Example DB columns (concise):
+	- `artist_profiles`: `id (uuid)`, `name`, `image_url`, `created_at`
+	- `songs`: `id (uuid)`, `title`, `artist_id`, `youtube_url`, `artwork_url`, `duration`, `genre`, `mood`, `play_count DEFAULT 0`, `created_by`, `created_at`
+
+- Security & best practices:
+	- Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. Keep it server-side and in environment variables.
+	- Enforce RLS policies and server-side admin checks for privileged operations.
+	- Validate and strictly whitelist `mood` and `genre` values.
+	- Rate-limit the endpoint and keep audit logs for admin actions.
+
+- Edge cases & error handling:
+	- Duplicate detection: check existing YouTube id and return `409 Conflict` if already present.
+	- YouTube video unavailable: allow manual override of metadata when enrichment fails.
+	- Large artwork uploads: use signed upload URLs so the client uploads directly to Storage and server finalizes the DB insert.
+	- Partial failure cleanup: if storage upload succeeds but DB insert fails, delete the uploaded object to avoid orphans.
+
+- Server pseudocode (simplified TypeScript):
+
+```ts
+// server-side endpoint (simplified)
+import { createServerSupabase } from './lib/supabase-admin'; // uses SERVICE_ROLE_KEY
+
+export async function POST(req) {
+	const supabaseAdmin = createServerSupabase(process.env.SUPABASE_SERVICE_ROLE_KEY);
+	const adminUser = await verifyAdminSession(req); // server-side auth check
+
+	const body = await req.json();
+	validate(body);
+
+	// enrich metadata
+	const meta = await fetchYouTubeOembed(body.youtube_url).catch(() => null);
+
+	// upload artwork if needed
+	const artworkUrl = await uploadArtworkIfNeeded(supabaseAdmin, body.artwork);
+
+	// insert song
+	const { data, error } = await supabaseAdmin.from('songs').insert([{ 
+		title: body.title || meta?.title,
+		artist_id: body.artist_id,
+		youtube_url: body.youtube_url,
+		artwork_url: artworkUrl,
+		duration: body.duration || meta?.duration,
+		genre: body.genre,
+		mood: body.mood,
+		created_by: adminUser.id
+	}]);
+
+	if (error) return new Response(JSON.stringify({ error }), { status: 500 });
+	return new Response(JSON.stringify(data[0]), { status: 201 });
+}
+```
+
+- Client tips:
+	- For large artwork files, implement a two-step upload: server returns a signed upload URL, client uploads directly to Storage, then server finalizes the DB insert using the Storage path.
+	- After creation, refresh listing endpoints or invalidate caches (SWR/React Query) so the new song appears.
+
+- Testing & observability:
+	- Unit test server validation and YouTube id parsing.
+	- Integration test flow against a test Supabase instance (upload artwork, insert song, verify DB and storage).
+	- Log admin id, song id, and outcome; track metrics for adds/failures.
+
 ## 9) Deployment (Vercel) A–Z
 
 1. Connect your Git repository to Vercel and create a new project.
